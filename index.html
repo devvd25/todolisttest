@@ -95,6 +95,14 @@
   .toast.error{background:#dc3545}
   .row .controls button{padding:6px 8px;border-radius:6px;font-size:13px}
   .paste-count,.copy-count{font-size:13px;color:var(--muted)}
+ .copy-warning {
+  background: #ffeb3b !important;      /* vàng đậm */
+  color: #000 !important;              /* chữ đen cho dễ đọc */
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
 </style>
 </head>
 <body>
@@ -250,7 +258,9 @@ function makeRowHtml(index){
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-start;margin-left:6px">
           <div class="paste-count">Dán: ${pasteCounts[id-1]||0} lần</div>
-          <div class="copy-count">Copy: ${copyCounts[id-1]||0} lần</div>
+          <div class="copy-count ${copyCounts[id-1] >= 5 ? 'copy-warning' : ''}">
+    Copy: ${copyCounts[id-1] || 0} lần
+</div>
         </div>
         <!-- SPINNER COPY (tăng/giảm số copy) -->
 <div style="display:flex; flex-direction:column; align-items:center; margin-left:6px;">
