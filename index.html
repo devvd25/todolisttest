@@ -102,6 +102,69 @@
   border-radius: 4px;
   font-weight: 600;
 }
+/* FIX: tránh input tràn qua controls, giữ hàng đều */
+.row {
+  /* để ý: giữ cấu trúc 4 cột như hiện tại, chỉ điều chỉnh một chút */
+  grid-template-columns: 56px 40px 1fr 360px !important;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Cho phép ô input co lại đúng trong grid (critical) */
+.row .text-input {
+  min-width: 0 !important;           /* CHÌA KHÓA để có thể shrink */
+  width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important; /* hiển thị ... nếu quá dài */
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+/* Phần controls (nằm bên phải input) giữ kích thước cố định và không bị push */
+.row > div[style*="display:flex"][style*="align-items:center"] {
+  min-width: 320px !important; /* chỉnh theo nhu cầu: tăng/giảm nếu cần */
+  max-width: 420px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+/* Make copy-count small and fixed so không phá layout */
+.copy-count {
+  display: inline-block;
+  min-width: 60px;
+  max-width: 90px;
+  padding: 6px 6px;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 600;
+  background: transparent;
+  color: #333;
+}
+
+/* warning badge style (khi >=5) — giữ gọn */
+.copy-warning {
+  background: #ffeb3b !important;
+  color: #000 !important;
+  padding: 6px 6px !important;
+  border-radius: 6px !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+
+/* Ghi chú cố định kích thước, không để nó ép controls */
+.note-input {
+  width: 140px !important;
+  min-width: 120px !important;
+}
+
+/* Responsive: khi màn hình nhỏ, giảm phần controls để input vẫn thấy */
+@media (max-width: 980px) {
+  .row { grid-template-columns: 56px 40px 1fr 1fr !important; }
+  .row > div[style*="display:flex"][style*="align-items:center"] { min-width: 140px !important; max-width: 220px !important; }
+  .text-input { min-width: 120px !important; }
+}
 
 </style>
 </head>
