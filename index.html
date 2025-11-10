@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Quản lý Text — 2 cột (1-9 | 10-18)</title>
+<title>Quản lý Text — 2 cột (1-9 | 10-18) + Timer</title>
 <style>
   *,*::before,*::after{box-sizing:border-box}
   :root{
@@ -22,14 +22,16 @@
   .col{background:transparent}
   .col h2{font-size:14px;margin:6px 0 10px;color:var(--muted)}
 
-  /* layout: time | stt | content-right */
-  .row{display:grid;grid-template-columns:56px 56px 1.8fr 360px; gap:8px;align-items:center;padding:var(--row-padding);border:1px solid #e6e6e6;border-radius:8px;background:#fff}
-  @media (max-width:980px){ .row{grid-template-columns:44px 44px 1fr auto} }
+  /* Row layout: time | stt | input & controls */
+  .row{display:grid;grid-template-columns:56px 40px 1fr 360px; gap:8px;align-items:center;padding:var(--row-padding);border:1px solid #e6e6e6;border-radius:8px;background:#fff}
+  @media (max-width:1200px){ .row{grid-template-columns:56px 40px 1fr 320px} }
+  @media (max-width:980px){ .row{grid-template-columns:56px 40px 1fr 1fr} }
 
-  .time-badge { width:46px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:#fff;border:1px solid #eee;color:#444;font-size:13px }
+  .timer{width:46px;text-align:center;color:#666;font-size:13px}
+  .timer.ready{color:#28a745;font-weight:700}
   .row-number{width:40px;height:40px;border-radius:50%;background:#e9f6ff;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;cursor:pointer;user-select:none}
-  .row-number.editing{background:#fff;border:1px solid #ddd; padding:0}
-  .text-input{width:100%;padding:8px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:14px;color:#111; overflow:hidden; white-space:nowrap; overflow-x:auto}
+  .row-number.editing{background:#fff;border:1px solid #ddd;padding:0}
+  .text-input{width:100%;padding:8px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:14px;color:#111;white-space:nowrap;overflow-x:auto}
   .text-input::selection{background:#b3d4ff}
   .note-input{width:140px;padding:8px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;resize:none;height:36px}
   .controls{display:flex;gap:8px;align-items:center}
@@ -39,17 +41,14 @@
   .copy-btn{background:#007bff}
   .delete-btn{background:#dc3545}
   .agent-select{width:110px;padding:6px;border-radius:6px;border:1px solid #ddd;background:#fff;font-size:13px}
-  .counts{display:flex;flex-direction:row;align-items:center;gap:12px;font-size:13px;color:var(--muted);margin-left:6px}
-  .counts .count-block{display:flex;flex-direction:column;align-items:flex-start}
-  .adjust { display:flex; flex-direction:row; gap:6px; align-items:center; }
-  .adjust button { padding:6px 8px; border-radius:6px; border:none; background:#6c757d; color:#fff; cursor:pointer; font-size:13px; }
+  .counts{display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:13px;color:var(--muted);margin-left:6px}
   .small{font-size:12px;color:var(--muted)}
   .add-row-btn{background:#28a745;color:#fff;padding:8px 14px;border-radius:6px;border:none;cursor:pointer}
   #links-modal{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;padding:14px;border:1px solid #ddd;border-radius:8px;z-index:9999;max-width:900px;width:94%;max-height:72vh;overflow:auto}
   .toast{position:fixed;right:18px;bottom:18px;background:#28a745;color:#fff;padding:10px 14px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.18);z-index:2147483647;opacity:1;transition:opacity .3s,transform .25s}
   .toast.error{background:#dc3545}
   .row .controls button{padding:6px 8px;border-radius:6px;font-size:13px}
-  @media (min-width:1200px){ .row{padding:12px} .text-input{font-size:14px} .note-input{height:40px} }
+  .paste-count,.copy-count{font-size:13px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -58,12 +57,12 @@
 
     <div class="board" id="board">
       <div class="col" id="col-left">
-        <h2>Trang Chrome 1</h2>
+        <h2>STT 1 → 9</h2>
         <div id="left-rows"></div>
       </div>
 
       <div class="col" id="col-right">
-        <h2>Trang Chrome 2</h2>
+        <h2>STT 10 → 18</h2>
         <div id="right-rows"></div>
       </div>
     </div>
@@ -92,62 +91,83 @@
 
 <script>
 /* ========== CONFIG ========== */
-const API_URL = 'https://844aace9e015.ngrok-free.app/push'; // <-- đổi nếu cần
-const SECRET_TOKEN = 'MY_SECRET_TOKEN_ChangeMe'; // <-- đổi giống server
+const API_URL = 'https://844aace9e015.ngrok-free.app/push'; // chỉnh nếu cần
+const SECRET_TOKEN = 'MY_SECRET_TOKEN_ChangeMe'; // chỉnh nếu cần
 const MAX_ROWS = 18;
 const LEFT_COUNT = 9;
+const TIMER_SECONDS = 180; // 3 phút
 
-/* ========== state ==========
- rowData: [{ text, note, agent, stt, lastTime }]
- pasteCounts[], copyCounts[], sendCounts[], uniqueLinks[]
-============================= */
-let rowData = [];
+/* ========== state ========== */
+let rowData = [];   // [{ text, note, agent, stt, lastPasteTimestamp }]
 let pasteCounts = [];
 let copyCounts = [];
-let sendCounts = [];
 let uniqueLinks = [];
+let timers = []; // [{ timeLeft, intervalId, waitingForFocus }] per row
 
+/* storage helpers */
 function storageKey(){ return 'textManager_2col_v1' }
 function isValidUrl(s){ return /^(https?:\/\/[^\s/$.?#].[^\s]*)$/i.test(String(s||'').trim()) }
 
+/* persist: include timers timeLeft + waitingForFocus so reload keeps timeLeft */
 function saveState(){
-  const payload = { rowData, pasteCounts, copyCounts, sendCounts, uniqueLinks, ts: new Date().toISOString() };
+  const payload = {
+    rowData,
+    pasteCounts,
+    copyCounts,
+    uniqueLinks,
+    timers: timers.map(t => t ? { timeLeft: t.timeLeft, waitingForFocus: !!t.waitingForFocus } : null),
+    ts: new Date().toISOString()
+  };
   localStorage.setItem(storageKey(), JSON.stringify(payload));
 }
 function loadState(){
   const raw = localStorage.getItem(storageKey());
   if(!raw){
-    rowData = Array(MAX_ROWS).fill(0).map(()=>({ text:'', note:'', agent:'', stt: null, lastTime: '' }));
+    rowData = Array(MAX_ROWS).fill(0).map(()=>({ text:'', note:'', agent:'', stt: null, lastPasteTimestamp: null }));
     pasteCounts = Array(MAX_ROWS).fill(0);
     copyCounts = Array(MAX_ROWS).fill(0);
-    sendCounts = Array(MAX_ROWS).fill(0);
     uniqueLinks = [];
+    timers = Array(MAX_ROWS).fill(null);
     renderAll(); updateTotals(); return;
   }
   try{
     const obj = JSON.parse(raw);
     rowData = obj.rowData && obj.rowData.length===MAX_ROWS ? obj.rowData.map(r => ({
-      text: r.text || '',
-      note: r.note || '',
-      agent: r.agent || '',
+      text: r.text||'',
+      note: r.note||'',
+      agent: r.agent||'',
       stt: r.stt || null,
-      lastTime: r.lastTime || ''
-    })) : (Array(MAX_ROWS).fill(0).map(()=>({ text:'', note:'', agent:'', stt: null, lastTime: '' })));
+      lastPasteTimestamp: r.lastPasteTimestamp || null
+    })) : Array(MAX_ROWS).fill(0).map(()=>({ text:'', note:'', agent:'', stt: null, lastPasteTimestamp: null }));
     pasteCounts = obj.pasteCounts && obj.pasteCounts.length===MAX_ROWS ? obj.pasteCounts : Array(MAX_ROWS).fill(0);
     copyCounts = obj.copyCounts && obj.copyCounts.length===MAX_ROWS ? obj.copyCounts : Array(MAX_ROWS).fill(0);
-    sendCounts = obj.sendCounts && obj.sendCounts.length===MAX_ROWS ? obj.sendCounts : Array(MAX_ROWS).fill(0);
     uniqueLinks = obj.uniqueLinks || [];
+    timers = Array(MAX_ROWS).fill(null);
+    if(obj.timers && Array.isArray(obj.timers)){
+      obj.timers.forEach((t,i)=>{
+        if(t && typeof t.timeLeft === 'number'){
+          timers[i] = { timeLeft: t.timeLeft, intervalId: null, waitingForFocus: !!t.waitingForFocus };
+        }
+      });
+    }
   }catch(e){
-    console.error('loadState error', e);
-    rowData = Array(MAX_ROWS).fill(0).map(()=>({ text:'', note:'', agent:'', stt: null, lastTime: '' }));
+    console.error('Load state error', e);
+    rowData = Array(MAX_ROWS).fill(0).map(()=>({ text:'', note:'', agent:'', stt: null, lastPasteTimestamp: null }));
     pasteCounts = Array(MAX_ROWS).fill(0);
     copyCounts = Array(MAX_ROWS).fill(0);
-    sendCounts = Array(MAX_ROWS).fill(0);
     uniqueLinks = [];
+    timers = Array(MAX_ROWS).fill(null);
   }
   renderAll(); updateTotals();
+  // Resume timers that should be running (if not waitingForFocus)
+  timers.forEach((t,i)=>{
+    if(t && !t.waitingForFocus && t.timeLeft > 0){
+      startTimer(i+1);
+    }
+  });
 }
 
+/* UI render */
 function buildAgentSelect(selected){
   let s = '<select class="agent-select">';
   for(let i=1;i<=MAX_ROWS;i++) s += `<option value="${i}" ${String(i)===String(selected)?'selected':''}>Agent ${i}</option>`;
@@ -155,16 +175,24 @@ function buildAgentSelect(selected){
   return s;
 }
 
+function formatTimerText(timeLeft){
+  if(timeLeft <= 0) return 'Sẵn sàng';
+  const m = Math.floor(timeLeft/60);
+  const s = timeLeft % 60;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
 function makeRowHtml(index){
   const id = index+1;
-  const data = rowData[index] || { text:'', note:'', agent:'', stt: null, lastTime: '' };
+  const data = rowData[index] || { text:'', note:'', agent:'', stt:null, lastPasteTimestamp: null };
   const displayStt = (data.stt !== null && data.stt !== undefined && String(data.stt).trim() !== '') ? data.stt : id;
   const textEsc = (data.text||'').replace(/"/g,'&quot;');
   const agentHtml = buildAgentSelect(data.agent || '');
-  const timeText = data.lastTime ? data.lastTime : '';
+  const timer = timers[index];
+  const timerText = timer ? formatTimerText(timer.timeLeft) : '';
+  const timerClass = (timer && timer.timeLeft <= 0) ? 'timer ready' : 'timer';
   return `
     <div class="row" data-id="${id}">
-      <div class="time-badge" title="Thời gian dán gần nhất">${timeText}</div>
+      <div class="${timerClass}">${timerText}</div>
       <div class="row-number" title="Double-click để sửa STT">${displayStt}</div>
       <input class="text-input" value="${textEsc}" placeholder="Nhập link hoặc văn bản..." />
       <div style="display:flex;align-items:center;gap:8px;width:100%;justify-content:flex-end">
@@ -174,19 +202,10 @@ function makeRowHtml(index){
           <button class="button copy-btn" onclick="copyText(${id})">Copy</button>
           <button class="button delete-btn" onclick="deleteText(${id})">Delete</button>
         </div>
-
-        <div class="counts">
-          <div class="count-block">
-            <div class="paste-count">Dán: ${pasteCounts[id-1]||0} lần</div>
-            <div class="copy-count">Copy: ${copyCounts[id-1]||0} lần</div>
-            <div class="small">Sent: ${sendCounts[id-1]||0} lần</div>
-          </div>
-          <div class="adjust">
-            <button onclick="adjustCopyCount(${id}, 1)">+</button>
-            <button onclick="adjustCopyCount(${id}, -1)">−</button>
-          </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-start;margin-left:6px">
+          <div class="paste-count">Dán: ${pasteCounts[id-1]||0} lần</div>
+          <div class="copy-count">Copy: ${copyCounts[id-1]||0} lần</div>
         </div>
-
         ${agentHtml}
         <textarea class="note-input" placeholder="Ghi chú...">${data.note||''}</textarea>
       </div>
@@ -210,14 +229,11 @@ function renderAll(){
     right.appendChild(wrap.firstElementChild);
   }
 
-  // attach events
   document.querySelectorAll('.row').forEach(rowEl => {
     const id = parseInt(rowEl.getAttribute('data-id'));
     const idx = id-1;
     const input = rowEl.querySelector('.text-input');
     input.addEventListener('input', e => { rowData[idx].text = e.target.value; saveState(); });
-
-    // show full text on hover
     input.title = rowData[idx].text || '';
 
     const select = rowEl.querySelector('.agent-select');
@@ -229,6 +245,9 @@ function renderAll(){
     // double-click on STT to edit displayed number (no reorder)
     const rn = rowEl.querySelector('.row-number');
     rn.addEventListener('dblclick', ()=> startEditSTTinline(rowEl));
+
+    // update timer element text & class reference
+    updateTimerDisplay(id);
   });
 }
 
@@ -238,25 +257,84 @@ function updateTotals(){
   document.getElementById('total-links').textContent = (uniqueLinks||[]).length;
 }
 
-/* ========== actions ========== */
-/* Paste: tăng cả pasteCounts và copyCounts; cập nhật lastTime */
+/* ========== Timer functions ========== */
+function updateTimerDisplay(rowId){
+  const idx = rowId-1;
+  const row = document.querySelector(`.row[data-id="${rowId}"]`);
+  if(!row) return;
+  const el = row.querySelector('.timer');
+  const t = timers[idx];
+  if(!t){ el.textContent = ''; el.classList.remove('ready'); return; }
+  if(t.timeLeft > 0){
+    el.textContent = formatTimerText(t.timeLeft);
+    el.classList.remove('ready');
+  } else {
+    el.textContent = 'Sẵn sàng';
+    el.classList.add('ready');
+    if(t.intervalId) { clearInterval(t.intervalId); t.intervalId = null; }
+  }
+}
+
+function resetTimer(rowId){
+  const idx = rowId-1;
+  if(timers[idx]){
+    if(timers[idx].intervalId) { clearInterval(timers[idx].intervalId); }
+    timers[idx] = null;
+    updateTimerDisplay(rowId);
+  }
+}
+
+function startTimer(rowId){
+  const idx = rowId-1;
+  if(!timers[idx]) return;
+  timers[idx].waitingForFocus = false;
+  if(timers[idx].intervalId) clearInterval(timers[idx].intervalId);
+  timers[idx].intervalId = setInterval(()=>{
+    timers[idx].timeLeft--;
+    updateTimerDisplay(rowId);
+    saveState();
+    if(timers[idx].timeLeft <= 0){
+      clearInterval(timers[idx].intervalId);
+      timers[idx].intervalId = null;
+    }
+  },1000);
+}
+
+/* ========== Actions (paste/copy/send/delete) ========== */
 async function pasteText(rowId){
   const idx = rowId-1;
   try{
     const txt = await navigator.clipboard.readText();
     rowData[idx].text = txt;
     pasteCounts[idx] = (pasteCounts[idx]||0)+1;
-    copyCounts[idx] = (copyCounts[idx]||0)+1; // vẫn tăng copyCounts khi paste (theo yêu cầu)
-    // cập nhật lastTime (HH:MM)
-    const now = new Date();
-    rowData[idx].lastTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
-    if(isValidUrl(txt) && !uniqueLinks.some(u=>u.url===txt)) uniqueLinks.push({ url: txt, timestamp: new Date().toISOString() });
+    // uniqueLinks
+    if(isValidUrl(txt)){
+      const t = txt.trim();
+      if(!uniqueLinks.some(l=>l.url===t)) uniqueLinks.push({ url:t, timestamp: new Date().toISOString() });
+      rowData[idx].lastPasteTimestamp = new Date().toISOString();
+      updateTotals();
+    } else {
+      rowData[idx].lastPasteTimestamp = new Date().toISOString();
+    }
+
+    // copyCounts logic similar to earlier behaviour
+    if(pasteCounts[idx] > 1) { copyCounts[idx] = 0; }
+    copyCounts[idx] = (copyCounts[idx]||0)+1;
+
+    // start/reset timer
+    resetTimer(rowId);
+    timers[idx] = { timeLeft: TIMER_SECONDS, intervalId: null, waitingForFocus: true };
+    updateTimerDisplay(rowId);
+
     saveState();
     renderAll();
     updateTotals();
     showToast('Đã dán');
-  }catch(e){ console.error(e); alert('Lỗi dán: kiểm tra quyền clipboard'); }
+  }catch(e){
+    console.error('Lỗi dán', e);
+    alert('Lỗi dán. Kiểm tra quyền clipboard hoặc chạy trên https/localhost.');
+  }
 }
 
 function copyText(rowId){
@@ -264,39 +342,38 @@ function copyText(rowId){
   const text = rowData[idx].text || '';
   navigator.clipboard.writeText(text).then(()=>{
     copyCounts[idx] = (copyCounts[idx]||0)+1;
+
+    // start/reset timer
+    resetTimer(rowId);
+    timers[idx] = { timeLeft: TIMER_SECONDS, intervalId: null, waitingForFocus: true };
+    updateTimerDisplay(rowId);
+
     saveState();
     renderAll();
     updateTotals();
     showToast('Đã copy');
-  }).catch(e => { alert('Lỗi copy: '+e.message); });
+  }).catch(e=>{
+    console.error('Lỗi copy', e);
+    alert('Lỗi copy: '+e);
+  });
 }
 
-function adjustCopyCount(rowId, change){
-  const idx = rowId-1;
-  copyCounts[idx] = Math.max(0,(copyCounts[idx]||0) + change);
-  saveState();
-  renderAll();
-  updateTotals();
-}
-
-/* Delete resets row (including stt & lastTime & counts) */
 function deleteText(rowId){
   const idx = rowId-1;
   rowData[idx].text = '';
   rowData[idx].note = '';
   rowData[idx].agent = '';
   rowData[idx].stt = null;
-  rowData[idx].lastTime = '';
+  rowData[idx].lastPasteTimestamp = null;
   pasteCounts[idx] = 0;
   copyCounts[idx] = 0;
-  sendCounts[idx] = 0;
+  resetTimer(rowId);
   saveState();
   renderAll();
   updateTotals();
   showToast('Đã xóa');
 }
 
-/* Send: tăng sendCounts; nếu sendCounts >= 2 sau khi gửi thành công thì +1 copyCounts */
 async function sendToAgent(rowId){
   const idx = rowId-1;
   const link = (rowData[idx].text||'').trim();
@@ -312,15 +389,6 @@ async function sendToAgent(rowId){
     const resp = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     const j = await resp.json().catch(()=>({ ok:false, error:'invalid_json' }));
     if(resp.ok && j.ok){
-      // tăng sendCounts
-      sendCounts[idx] = (sendCounts[idx]||0) + 1;
-      // nếu đây là lần gửi thứ 2 trở đi, thì +1 copyCounts mỗi lần gửi thành công
-      if(sendCounts[idx] >= 2){
-        copyCounts[idx] = (copyCounts[idx]||0) + 1;
-      }
-      saveState();
-      renderAll();
-      updateTotals();
       showToast(`Đã gửi tới Agent ${agentTo}`);
     } else {
       showToast('Gửi thất bại: ' + (j.error || JSON.stringify(j)), true);
@@ -336,7 +404,6 @@ function startEditSTTinline(rowEl){
   const rn = rowEl.querySelector('.row-number');
   const id = parseInt(rowEl.getAttribute('data-id'));
   const idx = id-1;
-  // create numeric/text input
   const inp = document.createElement('input');
   inp.type = 'text';
   inp.value = (rowData[idx] && rowData[idx].stt !== null && rowData[idx].stt !== undefined && String(rowData[idx].stt).trim() !== '') ? String(rowData[idx].stt) : String(id);
@@ -352,24 +419,16 @@ function startEditSTTinline(rowEl){
 
   function finish(){
     const raw = inp.value.trim();
-    if(raw === ''){
-      rowData[idx].stt = null;
-    } else {
-      const val = raw.slice(0, 6); // limit length
-      rowData[idx].stt = val;
-    }
+    if(raw === '') rowData[idx].stt = null;
+    else rowData[idx].stt = raw.slice(0, 6);
     saveState();
     renderAll();
   }
-
   inp.addEventListener('blur', finish);
-  inp.addEventListener('keydown', (e)=>{
-    if(e.key === 'Enter'){ inp.blur(); }
-    if(e.key === 'Escape'){ renderAll(); }
-  });
+  inp.addEventListener('keydown', (e)=>{ if(e.key==='Enter') inp.blur(); if(e.key==='Escape') renderAll(); });
 }
 
-/* ========== links modal ========== */
+/* ========== Links modal ========== */
 function showLinksModal(){
   const list = document.getElementById('links-list');
   list.innerHTML = '';
@@ -397,6 +456,21 @@ function showToast(msg, isError=false){
   setTimeout(()=> t.remove(), 1700);
 }
 
+/* ========== Visibility & resume timers ========== */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    timers.forEach((timer, index) => {
+      if (timer && timer.waitingForFocus && timer.timeLeft > 0) {
+        startTimer(index + 1);
+        saveState();
+      }
+    });
+  } else {
+    // If tab hidden, we don't stop timers that are already running; they continue in background.
+  }
+});
+
+/* ========== Reset / init ========== */
 function resetToDefault(){
   if(!confirm('Reset toàn bộ dữ liệu về 18 hàng trống?')) return;
   localStorage.removeItem(storageKey());
