@@ -107,6 +107,26 @@
 
 /* make note box a bit smaller to free space */
 .note-input{ width:140px !important; }
+/* --- stable highlight for copy-count: không làm layout nhảy --- */
+.copy-count {
+  display: inline-block;
+  min-width: 72px; /* giữ kích thước vùng ổn định */
+  padding: 2px 6px; /* padding mặc định (cùng với .highlight-copy để không đổi size) */
+  box-sizing: border-box;
+  border-radius: 6px;
+  font-weight: 500;
+  text-align: center;
+  transition: background-color .18s ease, color .18s ease;
+  background: transparent; /* mặc định trong suốt */
+  color: var(--muted);
+}
+
+/* khi vượt mốc, chỉ đổi màu nền/chữ, KHÔNG tăng font-weight nhiều */
+.copy-count.highlight-copy {
+  background-color: #fff3b0; /* vàng nhạt */
+  color: #111;
+  font-weight: 600; /* nhẹ nhàng — không to quá */
+}
 
 </style>
 </head>
@@ -309,12 +329,15 @@ function renderAll(){
     updateTimerDisplay(id);
 
     // --- NEW: highlight copy-count when >=5
-    const copyEl = rowEl.querySelector('.copy-count');
-    if(copyCounts[idx] >= 5){
-      copyEl.classList.add('highlight-copy');
-    } else {
-      copyEl.classList.remove('highlight-copy');
-    }
+  const copyEl = rowEl.querySelector('.copy-count');
+// đảm bảo element tồn tại
+if(copyEl){
+  // luôn giữ nội dung text như trước (đừng thay đổi innerHTML)
+  // chỉ add/remove class để đổi màu nền nhẹ nhàng
+  if ((copyCounts[idx]||0) >= 5) copyEl.classList.add('highlight-copy');
+  else copyEl.classList.remove('highlight-copy');
+}
+
   });
 }
 
