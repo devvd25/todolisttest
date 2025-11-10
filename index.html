@@ -1,186 +1,311 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
-  <title>Quản lý Text (Sender) — configured for ngrok</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <style>
-    /* CSS ngắn gọn (giữ giống file bạn dùng) */
-    body { font-family: Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 0 10px; }
-    .row { display:flex; align-items:center; margin-bottom:10px; padding:10px; border:1px solid #ccc; border-radius:5px;}
-    .row-number { width:30px; font-weight:bold; text-align:center; margin-right:10px; font-size:18px; background:#e0f7fa; border-radius:50%; padding:5px; color:#007bff; }
-    .text-input { flex:1; padding:8px; margin-right:10px; border:1px solid #ddd; border-radius:4px; }
-    .note-input { width:150px; height:40px; padding:8px; margin-left:10px; border:1px solid #ddd; border-radius:4px; resize:none; }
-    .button { padding:8px 12px; margin-right:5px; border:none; border-radius:4px; cursor:pointer; color:white; }
-    .paste-btn { background:#28a745; }
-    .copy-btn { background:#007bff; }
-    .delete-btn { background:#dc3545; }
-    .send-agent-btn { background:#17a2b8; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; }
-    .agent-select { width:120px; margin-left:10px; margin-right:10px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Text</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 0 10px; }
+        .row { display:flex; align-items:center; margin-bottom:10px; padding:10px; border:1px solid #ccc; border-radius:5px; }
+        .timer { width:80px; text-align:center; margin-right:10px; font-size:14px; color:#333; }
+        .timer.ready { color:#28a745; font-weight:bold; }
+        .row-number { width:30px; font-weight:bold; text-align:center; margin-right:10px; font-size:18px; background:#e0f7fa; border-radius:50%; padding:5px; color:#007bff; }
+        .text-input { flex:1; padding:8px; margin-right:10px; border:1px solid #ddd; border-radius:4px; }
+        .note-input { width:150px; height:40px; padding:8px; margin-left:10px; border:1px solid #ddd; border-radius:4px; resize:none; }
+        .button { padding:8px 12px; margin-right:5px; border:none; border-radius:4px; cursor:pointer; color:white; }
+        .paste-btn { background:#28a745; }
+        .copy-btn { background:#007bff; }
+        .delete-btn { background:#dc3545; }
+        .send-btn { background:#17a2b8; } /* nút Gửi mới */
+        .remove-row-btn { background:#ff6b6b; padding:8px 12px; }
+        .paste-count, .copy-count { margin-left:10px; font-weight:bold; color:#555; padding:5px; border-radius:3px; transition:background-color 0.3s; }
+        .copy-count.highlight { background:#ffc107 !important; }
+        .copy-adjust-btn { padding:2px 8px; margin-left:5px; font-size:12px; background:#6c757d; color:white; border:none; border-radius:3px; cursor:pointer; }
+        .total-paste, .total-links { margin-top:20px; padding:10px; border:1px solid #ccc; border-radius:5px; font-weight:bold; text-align:center; display:flex; align-items:center; justify-content:center; }
+        .show-links-btn { margin-left:10px; padding:5px 10px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer; }
+        .add-row-btn { margin-top:10px; padding:10px 20px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer; display:block; margin-left:auto; margin-right:auto; }
+        .links-modal { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; border:1px solid #ccc; border-radius:5px; padding:20px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 0 10px rgba(0,0,0,0.3); z-index:1000; }
+        .links-modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999; }
+        .links-modal h2 { margin-top:0; font-size:18px; }
+        .links-list { list-style:none; padding:0; margin:10px 0; }
+        .link-item { flex:1; display:flex; align-items:center; word-break:break-all; }
+        .delete-link-btn { background:#dc3545; color:white; border:none; padding:3px 8px; border-radius:3px; cursor:pointer; }
+        .delete-all-links-btn, .close-modal-btn { padding:5px 10px; margin:5px; border:none; border-radius:4px; cursor:pointer; color:white; }
+        .delete-all-links-btn { background:#dc3545; }
+        .close-modal-btn { background:#6c757d; }
+        .congratulations { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#28a745; color:white; padding:20px; border-radius:5px; box-shadow:0 0 10px rgba(0,0,0,0.3); font-size:18px; z-index:1000; }
+        /* toast */
+        .toast { position:fixed; right:20px; bottom:20px; background:#28a745; color:#fff; padding:10px 14px; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.18); z-index:2147483647; font-size:14px; opacity:1; transition:opacity .4s, transform .25s; }
+        .toast.error { background:#dc3545; }
+    </style>
 </head>
 <body>
-  <h1>Quản lý Text (Sender)</h1>
-  <div id="rows"></div>
-  <button onclick="addRow()">Thêm hàng</button>
+    <h1>Quản lý Text</h1>
+    <div id="rows"></div>
+    <button class="add-row-btn" onclick="addRow()">Thêm hàng</button>
+
+    <div class="total-paste">Tổng số lần dán: 0</div>
+    <div class="total-links">Tổng số link duy nhất: 0 <button class="show-links-btn" onclick="showLinksModal()">Xem Links</button></div>
+
+    <div class="links-modal-overlay"></div>
+    <div class="links-modal">
+        <h2>Danh sách link đã lưu</h2>
+        <ul class="links-list"></ul>
+        <div>
+            <button class="delete-all-links-btn" onclick="deleteAllLinks()">Xóa tất cả</button>
+            <button class="close-modal-btn" onclick="closeLinksModal()">Đóng</button>
+        </div>
+    </div>
+
+    <div class="congratulations" id="congratulations">Chúc mừng! Bạn đã đạt 10 lần dán!</div>
 
 <script>
-/* ===== CONFIG: dùng ngrok domain bạn báo ===== */
-const API_URL = 'https://844aace9e015.ngrok-free.app/push'; // <-- ngrok URL + /push
-const SECRET_TOKEN = 'MY_SECRET_TOKEN_ChangeMe'; // <-- phải giống server
-const MAX_AGENTS = 18; // set 9 hoặc 18 tùy bạn
+    // ====== CẤU HÌNH ======
+    const API_URL = 'https://844aace9e015.ngrok-free.app/push'; // <-- đổi theo server/ngrok của bạn
+    const SECRET_TOKEN = 'MY_SECRET_TOKEN_ChangeMe'; // <-- đổi giống server.js
 
-/* ===== state ===== */
-let rowData = [];
-let pasteCounts = [];
-let copyCounts = [];
-let uniqueLinks = [];
+    // ====== state ======
+    let pasteCounts = [];
+    let copyCounts = [];
+    let timers = [];
+    let uniqueLinks = [];
+    let rowData = [];
 
-/* helpers */
-function isValidUrl(s){ return /^(https?:\/\/[^\s/$.?#].[^\s]*)$/i.test(String(s||'').trim()); }
-function saveData(){ localStorage.setItem('sender_v1', JSON.stringify({rowData,pasteCounts,copyCounts,uniqueLinks})); }
-function loadData(){
-  const saved = localStorage.getItem('sender_v1');
-  if(saved){
-    const o = JSON.parse(saved);
-    rowData = o.rowData || [];
-    pasteCounts = o.pasteCounts || [];
-    copyCounts = o.copyCounts || [];
-    uniqueLinks = o.uniqueLinks || [];
-  } else {
-    rowData = Array(MAX_AGENTS).fill(0).map((_,i)=>({ text:'', note:'', agent: String(i+1) }));
-    pasteCounts = Array(MAX_AGENTS).fill(0);
-    copyCounts = Array(MAX_AGENTS).fill(0);
-  }
-  renderRows();
-}
+    // helper storage key (giữ tương thích)
+    function getStorageKey() {
+        const path = window.location.pathname;
+        if (path.includes('todolist2')) return 'textManagerData_todolist2';
+        return 'textManagerData_todolist';
+    }
 
-function buildAgentSelectHtml(selected){
-  let html = '<select class="agent-select">';
-  for(let i=1;i<=MAX_AGENTS;i++){
-    html += `<option value="${i}" ${String(i)===String(selected)?'selected':''}>Agent ${i}</option>`;
-  }
-  html += '</select>';
-  return html;
-}
+    function updateTotalPaste() {
+        const total = pasteCounts.reduce((s,c)=>s+(c||0),0);
+        document.querySelector('.total-paste').textContent = `Tổng số lần dán: ${total}`;
+        const congr = document.getElementById('congratulations');
+        if (total === 10) { congr.style.display='block'; setTimeout(()=>congr.style.display='none',3000); }
+    }
+    function updateTotalLinks() {
+        document.querySelector('.total-links').firstChild.textContent = `Tổng số link duy nhất: ${uniqueLinks.length} `;
+    }
+    function isValidUrl(s){ return /^(https?:\/\/[^\s/$.?#].[^\s]*)$/i.test(String(s||'').trim()); }
+    function formatTimestamp(ts){ const d=new Date(ts); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'); }
 
-function renderRows(){
-  const container = document.getElementById('rows');
-  container.innerHTML = '';
-  rowData.forEach((r, idx)=>{
-    const id = idx+1;
-    const row = document.createElement('div');
-    row.className = 'row';
-    row.innerHTML = `
-      <span class="row-number">${id}</span>
-      <input class="text-input" value="${(r.text||'').replace(/"/g,'&quot;')}" placeholder="Nhập link...">
-      <button class="button paste-btn" onclick="pasteText(${id})">Dán</button>
-      <button class="button copy-btn" onclick="copyText(${id})">Copy</button>
-      <button class="button delete-btn" onclick="clearRow(${id})">Xóa</button>
-      ${buildAgentSelectHtml(r.agent||String(id))}
-      <button class="send-agent-btn" onclick="sendToAgent(${id})">Gửi</button>
-    `;
-    container.appendChild(row);
+    // toast
+    function showToast(msg, isError=false) {
+      const t = document.createElement('div');
+      t.className = 'toast' + (isError ? ' error' : '');
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(()=> { t.style.opacity='0'; t.style.transform='translateY(10px)'; }, 1200);
+      setTimeout(()=> t.remove(), 1700);
+    }
 
-    // attach change listener for input & select
-    row.querySelector('.text-input').addEventListener('input', (e)=>{
-      rowData[idx].text = e.target.value;
-      saveData();
+    // ===== modal links =====
+    function showLinksModal(){
+        const modal=document.querySelector('.links-modal'), overlay=document.querySelector('.links-modal-overlay'), list=document.querySelector('.links-list');
+        list.innerHTML='';
+        if(uniqueLinks.length===0) list.innerHTML='<li>Chưa có link nào được lưu.</li>';
+        else uniqueLinks.forEach(l=>{
+            const li=document.createElement('li');
+            li.innerHTML = `<div class="link-item"><span class="link-url">${l.url}</span><span class="link-timestamp">${formatTimestamp(l.timestamp)}</span></div><button class="delete-link-btn" onclick="deleteLink('${l.url.replace(/'/g,"\\'")}')">Xóa</button>`;
+            list.appendChild(li);
+        });
+        modal.style.display='block'; overlay.style.display='block';
+    }
+    function deleteLink(url){ uniqueLinks=uniqueLinks.filter(x=>x.url!==url); updateTotalLinks(); saveData(); showLinksModal(); }
+    function deleteAllLinks(){ uniqueLinks=[]; updateTotalLinks(); saveData(); showLinksModal(); }
+    function closeLinksModal(){ document.querySelector('.links-modal').style.display='none'; document.querySelector('.links-modal-overlay').style.display='none'; }
+
+    function updateCopyDisplay(rowId){
+        const row=document.querySelector(`.row[data-id="${rowId}"]`);
+        const el=row.querySelector('.copy-count');
+        el.textContent = `Copy: ${copyCounts[rowId-1]||0} lần`;
+        if (copyCounts[rowId-1] >= 5) el.classList.add('highlight'); else el.classList.remove('highlight');
+    }
+    function updateTimerDisplay(rowId){
+        const row=document.querySelector(`.row[data-id="${rowId}"]`);
+        const tEl=row.querySelector('.timer');
+        if(!timers[rowId-1]) { tEl.textContent=''; tEl.classList.remove('ready'); return; }
+        if(timers[rowId-1].timeLeft>0){
+            const m=Math.floor(timers[rowId-1].timeLeft/60), s=timers[rowId-1].timeLeft%60;
+            tEl.textContent = `${m}:${s.toString().padStart(2,'0')}`; tEl.classList.remove('ready');
+        } else { tEl.textContent='Sẵn Sàng Tăng Like CMT'; tEl.classList.add('ready'); clearInterval(timers[rowId-1].intervalId); }
+    }
+    function resetTimer(rowId){ if(timers[rowId-1]){ clearInterval(timers[rowId-1].intervalId); timers[rowId-1]=null; updateTimerDisplay(rowId);} }
+    function startTimer(rowId){
+        if(!timers[rowId-1]) return;
+        timers[rowId-1].waitingForFocus=false;
+        timers[rowId-1].intervalId = setInterval(()=>{ timers[rowId-1].timeLeft--; updateTimerDisplay(rowId); saveData(); if(timers[rowId-1].timeLeft<=0) clearInterval(timers[rowId-1].intervalId); },1000);
+    }
+
+    function renderRows(){
+        const rowsContainer=document.getElementById('rows'); rowsContainer.innerHTML='';
+        rowData.forEach((data,i)=>{
+            const id=i+1;
+            const row=document.createElement('div'); row.className='row'; row.setAttribute('data-id', id);
+            row.innerHTML = `
+                <span class="timer"></span>
+                <span class="row-number">${id}</span>
+                <input type="text" class="text-input" placeholder="Nhập văn bản..." value="${(data.text||'').replace(/"/g,'&quot;')}">
+                <button class="button paste-btn" onclick="pasteText(${id})">Dán</button>
+                <button class="button send-btn" onclick="sendToAgent(${id})">Gửi</button>
+                <button class="button copy-btn" onclick="copyText(${id})">Copy</button>
+                <button class="button delete-btn" onclick="deleteText(${id})">Delete</button>
+                <span class="paste-count">Dán: ${pasteCounts[id-1]||0} lần</span>
+                <span class="copy-count">Copy: ${copyCounts[id-1]||0} lần</span>
+                <button class="copy-adjust-btn" onclick="adjustCopyCount(${id}, 1)">+</button>
+                <button class="copy-adjust-btn" onclick="adjustCopyCount(${id}, -1)">−</button>
+                <textarea class="note-input" placeholder="Ghi chú...">${data.note||''}</textarea>
+                <button class="button remove-row-btn" onclick="removeRow(${id})">Xóa</button>
+            `;
+            rowsContainer.appendChild(row);
+
+            // attach listeners for input & note so changes persist
+            const inputEl = row.querySelector('.text-input');
+            inputEl.addEventListener('input', (e)=>{ rowData[id-1].text = e.target.value; saveData(); });
+
+            const noteEl = row.querySelector('.note-input');
+            noteEl.addEventListener('input', (e)=>{ rowData[id-1].note = e.target.value; saveData(); });
+
+            updateCopyDisplay(id);
+            updateTimerDisplay(id);
+        });
+    }
+
+    function addRow(){ rowData.push({ text:'', note:'' }); pasteCounts.push(0); copyCounts.push(0); timers.push(null); renderRows(); saveData(); }
+    function removeRow(rowId){ if(rowData.length<=1){ alert('Phải có ít nhất 1 hàng!'); return; } rowData.splice(rowId-1,1); pasteCounts.splice(rowId-1,1); copyCounts.splice(rowId-1,1); timers.splice(rowId-1,1); renderRows(); saveData(); }
+
+    function saveData(){
+        const textInputs = rowData.map(d=>d.text);
+        const noteInputs = rowData.map(d=>d.note);
+        const savedTimers = timers.map(t => t ? { timeLeft: t.timeLeft, waitingForFocus: t.waitingForFocus } : null);
+        const data = { textInputs, noteInputs, pasteCounts, copyCounts, timers: savedTimers, uniqueLinks, saveTimestamp: new Date().toISOString() };
+        localStorage.setItem(getStorageKey(), JSON.stringify(data));
+    }
+
+    function clearDataIfNewDay(){
+        const sk = getStorageKey();
+        const saved = localStorage.getItem(sk);
+        if(!saved) return;
+        const { saveTimestamp } = JSON.parse(saved);
+        if(new Date(saveTimestamp).toDateString() !== new Date().toDateString()){
+            localStorage.removeItem(sk); uniqueLinks = []; updateTotalLinks();
+        }
+    }
+
+    function loadData(){
+        clearDataIfNewDay();
+        const saved = localStorage.getItem(getStorageKey());
+        if(!saved){
+            rowData = Array(9).fill().map(()=>({ text:'', note:'' }));
+            pasteCounts = Array(9).fill(0); copyCounts = Array(9).fill(0); timers = Array(9).fill(null);
+            renderRows(); return;
+        }
+        const parsed = JSON.parse(saved);
+        const { textInputs = [], noteInputs = [], pasteCounts: pc = [], copyCounts: cc = [], timers: tms = [], uniqueLinks: ul = [] } = parsed;
+        rowData = (textInputs.length? textInputs.map((text,i)=>({ text: text||'', note: noteInputs[i]||'' })) : Array(9).fill().map(()=>({ text:'', note:'' })));
+        pasteCounts = pc.length? pc : Array(rowData.length).fill(0);
+        copyCounts = cc.length? cc : Array(rowData.length).fill(0);
+        timers = tms.length? tms : Array(rowData.length).fill(null);
+        uniqueLinks = ul || [];
+        updateTotalLinks(); renderRows(); updateTotalPaste();
+    }
+
+    // clipboard actions
+    async function pasteText(rowId){
+        try {
+            const text = await navigator.clipboard.readText();
+            const row = document.querySelector(`.row[data-id="${rowId}"]`);
+            const input = row.querySelector('.text-input');
+            input.value = text;
+            rowData[rowId-1].text = text;
+            pasteCounts[rowId-1] = (pasteCounts[rowId-1]||0) + 1;
+
+            if(isValidUrl(text)){
+                const t=text.trim();
+                if(!uniqueLinks.some(l=>l.url===t)) uniqueLinks.push({ url: t, timestamp: new Date().toISOString() });
+                updateTotalLinks();
+            }
+
+            // update copyCounts logic (kept similar)
+            copyCounts[rowId-1] = (copyCounts[rowId-1]||0) + 1;
+            row.querySelector('.paste-count').textContent = `Dán: ${pasteCounts[rowId-1]} lần`;
+            updateCopyDisplay(rowId);
+
+            // timers
+            resetTimer(rowId);
+            timers[rowId-1] = { timeLeft: 180, intervalId: null, waitingForFocus: true };
+            updateTimerDisplay(rowId);
+
+            saveData(); updateTotalPaste();
+        } catch(e){
+            console.error('Lỗi dán:', e);
+            alert('Lỗi dán. Hãy kiểm tra quyền clipboard hoặc chạy trên https/localhost.');
+        }
+    }
+
+    function copyText(rowId){
+        const row = document.querySelector(`.row[data-id="${rowId}"]`);
+        const input = row.querySelector('.text-input');
+        navigator.clipboard.writeText(input.value).then(()=>{
+            copyCounts[rowId-1] = (copyCounts[rowId-1]||0) + 1;
+            updateCopyDisplay(rowId);
+
+            resetTimer(rowId);
+            timers[rowId-1] = { timeLeft:180, intervalId:null, waitingForFocus:true };
+            updateTimerDisplay(rowId);
+
+            saveData();
+        }).catch(e => { alert('Lỗi copy: ' + e.message); });
+    }
+
+    function adjustCopyCount(rowId, change){ copyCounts[rowId-1] = Math.max(0,(copyCounts[rowId-1]||0) + change); updateCopyDisplay(rowId); saveData(); }
+    function deleteText(rowId){
+        const row = document.querySelector(`.row[data-id="${rowId}"]`);
+        row.querySelector('.text-input').value=''; row.querySelector('.note-input').value='';
+        rowData[rowId-1] = { text:'', note:'' };
+        pasteCounts[rowId-1]=0; copyCounts[rowId-1]=0;
+        row.querySelector('.paste-count').textContent = `Dán: 0 lần`;
+        resetTimer(rowId); updateCopyDisplay(rowId); saveData(); updateTotalPaste();
+    }
+
+    // ======= NEW: gửi tới agent =======
+    async function sendToAgent(rowId){
+        const idx = rowId-1;
+        const link = (rowData[idx] && rowData[idx].text) ? rowData[idx].text.trim() : '';
+        if(!link) { showToast('Chưa có link để gửi', true); return; }
+        if(!isValidUrl(link) && !confirm('Link có vẻ không chuẩn http(s). Vẫn gửi?')) return;
+
+        // agent id lấy từ localStorage (nreer_agent_id) — same as agent userscript
+        const agentId = localStorage.getItem('nreer_agent_id') || null;
+
+        const payload = { token: SECRET_TOKEN, targetAgent: agentId || '1', link };
+
+        try {
+            const res = await fetch(API_URL, { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            const j = await res.json().catch(()=>({ ok:false, error:'invalid_json' }));
+            if(res.ok && j.ok) {
+                showToast(`Đã gửi tới Agent ${agentId || '1'}`);
+            } else {
+                const err = j.error || j || 'unknown';
+                showToast(`Gửi thất bại: ${err}`, true);
+            }
+        } catch(e){
+            console.error('Gửi lỗi', e);
+            showToast('Lỗi khi gửi (network)', true);
+        }
+    }
+
+    // init
+    window.addEventListener('load', loadData);
+    document.addEventListener('visibilitychange', ()=>{
+        if(document.visibilityState === 'visible'){
+            timers.forEach((t,i)=>{ if(t && t.waitingForFocus && t.timeLeft>0) startTimer(i+1); });
+        }
     });
-    row.querySelector('.agent-select').addEventListener('change', (e)=>{
-      rowData[idx].agent = e.target.value;
-      saveData();
-    });
-  });
-}
 
-function addRow(){
-  rowData.push({ text:'', note:'', agent: String(rowData.length+1) });
-  pasteCounts.push(0); copyCounts.push(0);
-  renderRows(); saveData();
-}
-
-async function pasteText(rowId){
-  try{
-    const txt = await navigator.clipboard.readText();
-    const idx = rowId-1;
-    rowData[idx].text = txt;
-    pasteCounts[idx] = (pasteCounts[idx]||0)+1;
-    if(isValidUrl(txt) && !uniqueLinks.some(a=>a.url===txt)) uniqueLinks.push({url:txt,ts:Date.now()});
-    renderRows(); saveData();
-  }catch(e){
-    alert('Lỗi dán: ' + e.message);
-  }
-}
-
-function copyText(rowId){
-  const idx = rowId-1;
-  const txt = rowData[idx].text || '';
-  navigator.clipboard.writeText(txt).then(()=>{
-    copyCounts[idx] = (copyCounts[idx]||0)+1;
-    saveData();
-  }).catch(e => alert('Lỗi copy: '+e.message));
-}
-
-function clearRow(rowId){
-  const idx = rowId-1;
-  rowData[idx].text = ''; saveData(); renderRows();
-}
-
-/* ===== send to server ===== */
-async function sendToAgent(rowId){
-  const idx = rowId-1;
-  const agent = rowData[idx].agent || String(rowId);
-  const link = (rowData[idx].text||'').trim();
-  if(!link) return alert('Chưa có link để gửi');
-  if(!isValidUrl(link) && !confirm('Link có vẻ không phải http(s). Vẫn gửi?')) return;
-
-  try{
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: SECRET_TOKEN, targetAgent: agent, link })
-    });
-    const j = await res.json();
-    if (j.ok) {
-    showToast(`Đã gửi tới Agent ${agent}`);
-} else {
-    showToast(`Gửi thất bại: ${j.error || JSON.stringify(j)}`, true);
-}
-
-  }catch(e){
-    alert('Gửi thất bại: ' + e.message);
-  }
-}
-
-/* init */
-window.addEventListener('load', ()=>{ loadData(); });
-  function showToast(msg, isError = false) {
-  let toast = document.createElement("div");
-  toast.textContent = msg;
-
-  Object.assign(toast.style, {
-    position: "fixed",
-    right: "20px",
-    bottom: "20px",
-    background: isError ? "#dc3545" : "#28a745",
-    color: "#fff",
-    padding: "10px 16px",
-    borderRadius: "6px",
-    boxShadow: "0px 3px 10px rgba(0,0,0,0.25)",
-    fontSize: "14px",
-    zIndex: 99999,
-    opacity: 1,
-    transition: "opacity 0.5s ease"
-  });
-
-  document.body.appendChild(toast);
-
-  setTimeout(() => {
-    toast.style.opacity = "0";
-    setTimeout(() => toast.remove(), 500);
-  }, 1200);
-}
+    // expose for debugging
+    window.__textManager = { saveData, loadData, sendToAgent };
 
 </script>
 </body>
