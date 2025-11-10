@@ -238,8 +238,16 @@ function makeRowHtml(index){
           <div class="paste-count">Dán: ${pasteCounts[id-1]||0} lần</div>
           <div class="copy-count">Copy: ${copyCounts[id-1]||0} lần</div>
         </div>
-        ${agentHtml}
-        <textarea class="note-input" placeholder="Ghi chú...">${data.note||''}</textarea>
+        <!-- SPINNER COPY (tăng/giảm số copy) -->
+<div style="display:flex; flex-direction:column; align-items:center; margin-left:6px;">
+  <button onclick="changeCopy(${id}, 1)" style="width:24px; height:18px; font-size:10px;">▲</button>
+  <button onclick="changeCopy(${id}, -1)" style="width:24px; height:18px; font-size:10px;">▼</button>
+</div>
+
+${agentHtml}
+
+<textarea class="note-input" placeholder="Ghi chú...">${data.note||''}</textarea>
+
       </div>
     </div>
   `;
@@ -509,6 +517,15 @@ function resetToDefault(){
   loadState();
   showToast('Đã reset');
 }
+ function changeCopy(rowId, delta) {
+  const idx = rowId - 1;
+  const current = copyCounts[idx] || 0;
+  const next = Math.max(0, current + delta); // không cho < 0
+  copyCounts[idx] = next;
+  saveState();
+  renderAll();
+}
+
 
 /* init */
 window.addEventListener('load', ()=>{ loadState(); setInterval(()=>updateTotals(),1000); });
