@@ -22,8 +22,18 @@
   .col{background:transparent}
   .col h2{font-size:14px;margin:6px 0 10px;color:var(--muted)}
 
-  /* Row layout: time | stt | input & controls */
-  .row{display:grid;grid-template-columns:56px 40px 1fr 360px; gap:8px;align-items:center;padding:var(--row-padding);border:1px solid #e6e6e6;border-radius:8px;background:#fff}
+  /* Row layout: time | stt | input & controls
+     Keep right controls area with fixed-ish width, allow middle input to shrink */
+  .row{
+    display:grid;
+    grid-template-columns:56px 40px 1fr 360px;
+    gap:8px;
+    align-items:center;
+    padding:var(--row-padding);
+    border:1px solid #e6e6e6;
+    border-radius:8px;
+    background:#fff;
+  }
   @media (max-width:1200px){ .row{grid-template-columns:56px 40px 1fr 320px} }
   @media (max-width:980px){ .row{grid-template-columns:56px 40px 1fr 1fr} }
 
@@ -31,141 +41,84 @@
   .timer.ready{color:#28a745;font-weight:700}
   .row-number{width:40px;height:40px;border-radius:50%;background:#e9f6ff;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;cursor:pointer;user-select:none}
   .row-number.editing{background:#fff;border:1px solid #ddd;padding:0}
-  /* Thay thế phần .text-input cũ bằng block này */
-.text-input {
-  box-sizing: border-box;
-  flex: 1 !important;             /* giữ cho input giãn hợp lý */
-  min-width: 330px !important;    /* chỉnh theo ý bạn */
-  max-width: none !important;
 
-  padding: 8px 10px;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
+  /* TEXT INPUT: allow shrink (min-width:0), ellipsis when too long */
+  .text-input {
+    box-sizing: border-box;
+    min-width: 0;                 /* KEY: allows input to shrink inside grid */
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #111;
+    background: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .text-input::placeholder { color:#999; font-size:14px; font-weight:400; opacity:1; }
 
-  font-weight: 400 !important;    /* cố định weight */
-  font-size: 14px !important;     /* cố định size */
-  line-height: 1.4 !important;
-  color: #111 !important;
-  background: #fff !important;
+  /* Controls container on right: reserve space and prevent being pushed by input */
+  .row-right {
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:8px;
+    min-width: 260px; /* ensures controls area keeps reasonable width */
+    max-width: 420px;
+    box-sizing: border-box;
+  }
 
-  white-space: nowrap;
-  overflow-x: auto;
-  transition: none !important;    /* không cho hiệu ứng thay đổi kích thước/font */
-}
-
-/* Placeholder cũng dùng đúng size/weight để không thấy khác biệt */
-.text-input::placeholder {
-  font-weight: 400;
-  font-size: 14px;
-  color: #999;
-  opacity: 1;
-}
-
-/* Selection color */
-.text-input::selection { background: #b3d4ff; color: inherit; }
-
-
-  /* Giữ ô Ghi chú luôn hiện dạng hộp, không bị nén khi zoom */
-.note-input {
-  box-sizing: border-box;
-  flex: 0 0 auto !important;     /* không cho co lại */
-  min-width: 140px !important;    /* thay số này nếu muốn rộng hơn */
-  max-width: 260px !important;    /* tránh quá rộng phá layout */
-  width: 140px !important;        /* giữ kích thước cố định mặc định */
-  min-height: 36px !important;    /* đảm bảo thấy hộp, không còn chỉ thanh cuộn */
-  padding: 8px !important;
-  border-radius: 8px !important;
-  overflow: visible !important;
-  background: #fff !important;
-  font-size: 14px !important;
-  line-height: 1.3 !important;
-}
-  .controls{display:flex;gap:8px;align-items:center}
+  .controls{display:flex;gap:8px;align-items:center;flex-shrink:0}
   .button{padding:7px 10px;border-radius:6px;border:none;color:#fff;cursor:pointer;font-size:13px}
   .paste-btn{background:#28a745}
   .send-btn{background:#17a2b8}
   .copy-btn{background:#007bff}
   .delete-btn{background:#dc3545}
-  .agent-select{width:110px;padding:6px;border-radius:6px;border:1px solid #ddd;background:#fff;font-size:13px}
-  .counts{display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:13px;color:var(--muted);margin-left:6px}
+
+  /* copy count badge */
+  .copy-count{
+    display:inline-block;
+    min-width:64px;
+    max-width:100px;
+    padding:6px 8px;
+    border-radius:6px;
+    text-align:center;
+    font-weight:700;
+    background:transparent;
+    color:#333;
+    box-sizing:border-box;
+  }
+  .copy-warning {
+    background: #ffeb3b !important;
+    color: #000 !important;
+  }
+
+  /* spinner column (▲/▼) */
+  .spinner-col {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+    min-width:30px;
+    box-sizing:border-box;
+  }
+  .spinner-col button{
+    width:28px;height:18px;padding:0;border-radius:4px;border:1px solid #ddd;background:#fff;cursor:pointer;font-size:10px;
+  }
+
+  .agent-select{width:110px;padding:6px;border-radius:6px;border:1px solid #ddd;background:#fff;font-size:13px;flex-shrink:0}
+  .note-input{width:140px;padding:8px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;resize:none;height:36px;flex-shrink:0}
+
   .small{font-size:12px;color:var(--muted)}
   .add-row-btn{background:#28a745;color:#fff;padding:8px 14px;border-radius:6px;border:none;cursor:pointer}
   #links-modal{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;padding:14px;border:1px solid #ddd;border-radius:8px;z-index:9999;max-width:900px;width:94%;max-height:72vh;overflow:auto}
   .toast{position:fixed;right:18px;bottom:18px;background:#28a745;color:#fff;padding:10px 14px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.18);z-index:2147483647;opacity:1;transition:opacity .3s,transform .25s}
   .toast.error{background:#dc3545}
-  .row .controls button{padding:6px 8px;border-radius:6px;font-size:13px}
   .paste-count,.copy-count{font-size:13px;color:var(--muted)}
- .copy-warning {
-  background: #ffeb3b !important;      /* vàng đậm */
-  color: #000 !important;              /* chữ đen cho dễ đọc */
-  padding: 4px 6px;
-  border-radius: 4px;
-  font-weight: 600;
-}
-/* FIX: tránh input tràn qua controls, giữ hàng đều */
-.row {
-  /* để ý: giữ cấu trúc 4 cột như hiện tại, chỉ điều chỉnh một chút */
-  grid-template-columns: 56px 40px 1fr 360px !important;
-  gap: 10px;
-  align-items: center;
-}
-
-/* Cho phép ô input co lại đúng trong grid (critical) */
-.row .text-input {
-  min-width: 0 !important;           /* CHÌA KHÓA để có thể shrink */
-  width: 100% !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important; /* hiển thị ... nếu quá dài */
-  white-space: nowrap !important;
-  box-sizing: border-box !important;
-}
-
-/* Phần controls (nằm bên phải input) giữ kích thước cố định và không bị push */
-.row > div[style*="display:flex"][style*="align-items:center"] {
-  min-width: 320px !important; /* chỉnh theo nhu cầu: tăng/giảm nếu cần */
-  max-width: 420px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-end !important;
-  gap: 8px !important;
-}
-
-/* Make copy-count small and fixed so không phá layout */
-.copy-count {
-  display: inline-block;
-  min-width: 60px;
-  max-width: 90px;
-  padding: 6px 6px;
-  border-radius: 6px;
-  text-align: center;
-  font-weight: 600;
-  background: transparent;
-  color: #333;
-}
-
-/* warning badge style (khi >=5) — giữ gọn */
-.copy-warning {
-  background: #ffeb3b !important;
-  color: #000 !important;
-  padding: 6px 6px !important;
-  border-radius: 6px !important;
-  font-weight: 700 !important;
-  box-shadow: none !important;
-}
-
-/* Ghi chú cố định kích thước, không để nó ép controls */
-.note-input {
-  width: 140px !important;
-  min-width: 120px !important;
-}
-
-/* Responsive: khi màn hình nhỏ, giảm phần controls để input vẫn thấy */
-@media (max-width: 980px) {
-  .row { grid-template-columns: 56px 40px 1fr 1fr !important; }
-  .row > div[style*="display:flex"][style*="align-items:center"] { min-width: 140px !important; max-width: 220px !important; }
-  .text-input { min-width: 120px !important; }
-}
-
 </style>
 </head>
 <body>
@@ -307,36 +260,39 @@ function makeRowHtml(index){
   const timer = timers[index];
   const timerText = timer ? formatTimerText(timer.timeLeft) : '';
   const timerClass = (timer && timer.timeLeft <= 0) ? 'timer ready' : 'timer';
+
+  // Build right area html: controls + counts + spinner + agent + note
+  const rightHtml = `
+    <div class="row-right">
+      <div class="controls">
+        <button class="button paste-btn" onclick="pasteText(${id})">Dán</button>
+        <button class="button send-btn" onclick="sendToAgent(${id})">Gửi</button>
+        <button class="button copy-btn" onclick="copyText(${id})">Copy</button>
+        <button class="button delete-btn" onclick="deleteText(${id})">Delete</button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;align-items:flex-start;margin-left:6px;">
+        <div class="paste-count">Dán: ${pasteCounts[id-1]||0} lần</div>
+        <div class="copy-count ${copyCounts[id-1] >= 5 ? 'copy-warning' : ''}">Copy: ${copyCounts[id-1] || 0} lần</div>
+      </div>
+
+      <div class="spinner-col">
+        <button onclick="changeCopy(${id}, 1)">▲</button>
+        <button onclick="changeCopy(${id}, -1)">▼</button>
+      </div>
+
+      ${agentHtml}
+
+      <textarea class="note-input" placeholder="Ghi chú...">${data.note||''}</textarea>
+    </div>
+  `;
+
   return `
     <div class="row" data-id="${id}">
       <div class="${timerClass}">${timerText}</div>
       <div class="row-number" title="Double-click để sửa STT">${displayStt}</div>
       <input class="text-input" value="${textEsc}" placeholder="Nhập link hoặc văn bản..." />
-      <div style="display:flex;align-items:center;gap:8px;width:100%;justify-content:flex-end">
-        <div class="controls">
-          <button class="button paste-btn" onclick="pasteText(${id})">Dán</button>
-          <button class="button send-btn" onclick="sendToAgent(${id})">Gửi</button>
-          <button class="button copy-btn" onclick="copyText(${id})">Copy</button>
-          <button class="button delete-btn" onclick="deleteText(${id})">Delete</button>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-start;margin-left:6px">
-          <div class="paste-count">Dán: ${pasteCounts[id-1]||0} lần</div>
-          <div class="copy-count ${copyCounts[id-1] >= 5 ? 'copy-warning' : ''}">
-    Copy: ${copyCounts[id-1] || 0} lần
-</div>
-
-        </div>
-        <!-- SPINNER COPY (tăng/giảm số copy) -->
-<div style="display:flex; flex-direction:column; align-items:center; margin-left:6px;">
-  <button onclick="changeCopy(${id}, 1)" style="width:24px; height:18px; font-size:10px;">▲</button>
-  <button onclick="changeCopy(${id}, -1)" style="width:24px; height:18px; font-size:10px;">▼</button>
-</div>
-
-${agentHtml}
-
-<textarea class="note-input" placeholder="Ghi chú...">${data.note||''}</textarea>
-
-      </div>
+      ${rightHtml}
     </div>
   `;
 }
@@ -615,7 +571,6 @@ function resetToDefault(){
 }
 
 
-/* init */
 window.addEventListener('load', ()=>{ loadState(); setInterval(()=>updateTotals(),1000); });
 window.__textTwoCol = { loadState, saveState, sendToAgent, deleteAllLinks };
 </script>
