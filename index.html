@@ -169,6 +169,54 @@
 
 /* helper: highlight khi debug */
 .row.debug-border { outline: 1px dashed rgba(0,0,0,0.08) !important; }
+/* QUICK FIX: ưu tiên mở rộng ô input, giới hạn controls */
+.row {
+  /* cho cột input lớn hơn (2.2fr) và phần controls cố định tối đa */
+  grid-template-columns: 56px 40px 2.2fr minmax(180px, 360px) !important;
+  gap: 8px !important;
+}
+
+/* đảm bảo input được phép co nhưng cũng được ưu tiên không bị bóp quá nhỏ */
+.row input.text-input {
+  min-width: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* hạn chế controls ăn quá nhiều chỗ */
+.row .row-right {
+  min-width: 180px !important;   /* tối thiểu */
+  max-width: 360px !important;   /* tối đa */
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  box-sizing: border-box !important;
+}
+
+/* làm badge copy gọn, không chiếm chỗ */
+.copy-count, .copy-warning {
+  min-width: 56px !important;
+  max-width: 90px !important;
+  padding: 4px 6px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* nếu màn hình bé, giảm kích thước phần controls để input còn chỗ */
+@media (max-width: 1200px) {
+  .row { grid-template-columns: 56px 40px 1.8fr minmax(140px, 320px) !important; }
+  .row .row-right { min-width:140px !important; max-width:320px !important; }
+}
+@media (max-width: 980px) {
+  .row { grid-template-columns: 56px 40px 1fr 1fr !important; }
+  .note-input { width:110px !important; min-width:90px !important; }
+}
 
 </style>
 </head>
