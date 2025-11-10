@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý Text (Sender)</title>
+  <style>
+    /* (giữ nguyên styles từ file bạn gửi) */
+    body { font-family: Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 0 10px; }
+    .row { display:flex; align-items:center; margin-bottom:10px; padding:10px; border:1px solid #ccc; border-radius:5px;}
+    .timer { width:80px; text-align:center; margin-right:10px; font-size:14px; color:#333; }
+    .timer.ready { color:#28a745; font-weight:bold; }
+    .row-number { width:30px; font-weight:bold; text-align:center; margin-right:10px; font-size:18px; background:#e0f7fa; border-radius:50%; padding:5px; color:#007bff; }
+    .text-input { flex:1; padding:8px; margin-right:10px; border:1px solid #ddd; border-radius:4px; }
+    .note-input { width:150px; height:40px; padding:8px; margin-left:10px; border:1px solid #ddd; border-radius:4px; resize:none; }
+    .button { padding:8px 12px; margin-right:5px; border:none; border-radius:4px; cursor:pointer; color:white; }
+    .paste-btn { background:#28a745; }
+    .copy-btn { background:#007bff; }
+    .delete-btn { background:#dc3545; }
+    .remove-row-btn { background:#ff6b6b; padding:8px 12px; }
+    .paste-count, .copy-count { margin-left:10px; font-weight:bold; color:#555; padding:5px; border-radius:3px; transition:background-color 0.3s; }
+    .copy-count.highlight { background:#ffc107 !important; }
+    .copy-adjust-btn { padding:2px 8px; margin-left:5px; font-size:12px; background:#6c757d; color:white; border:none; border-radius:3px; cursor:pointer; }
+    .total-paste, .total-links { margin-top:20px; padding:10px; border:1px solid #ccc; border-radius:5px; font-weight:bold; text-align:center; display:flex; align-items:center; justify-content:center; }
+    .show-links-btn { margin-left:10px; padding:5px 10px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer; }
+    .add-row-btn { margin-top:10px; padding:10px 20px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer; display:block; margin-left:auto; margin-right:auto; }
+    .links-modal { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; border:1px solid #ccc; border-radius:5px; padding:20px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 0 10px rgba(0,0,0,0.3); z-index:1000; }
+    .links-modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999; }
+    .links-modal h2 { margin-top:0; font-size:18px; }
+    .links-list { list-style:none; padding:0; margin:10px 0; }
+    .links-list li { display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee; }
+    .link-item { flex:1; display:flex; align-items:center; word-break:break-all; }
+    .link-url { flex:1; }
+    .link-timestamp { width:60px; text-align:right; margin-left:10px; color:#555; }
+    .delete-link-btn { background:#dc3545; color:white; border:none; padding:3px 8px; border-radius:3px; cursor:pointer; }
+    .delete-all-links-btn, .close-modal-btn { padding:5px 10px; margin:5px; border:none; border-radius:4px; cursor:pointer; color:white; }
+    .delete-all-links-btn { background:#dc3545; }
+    .close-modal-btn { background:#6c757d; }
+    .congratulations { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#28a745; color:white; padding:20px; border-radius:5px; box-shadow:0 0 10px rgba(0,0,0,0.3); font-size:18px; z-index:1000; }
+    /* new */
+    .agent-select { width:120px; margin-left:10px; margin-right:10px; }
+    .send-agent-btn { background:#17a2b8; }
+    .agent-status { width:120px; text-align:center; font-size:13px; margin-left:10px; }
+  </style>
+</head>
+<body>
+  <h1>Quản lý Text (Sender)</h1>
+  <div id="rows"></div>
+  <button class="add-row-btn" onclick="addRow()">Thêm hàng</button>
+  <div class="total-paste">Tổng số lần dán: 0</div>
+  <div class="total-links">Tổng số link duy nhất: 0 <button class="show-links-btn">Xem Links</button></div>
+
+  <div class="links-modal-overlay"></div>
+  <div class="links-modal">
+    <h2>Danh sách link đã lưu</h2>
+    <ul class="links-list"></ul>
+    <div>
+      <button class="delete-all-links-btn">Xóa tất cả</button>
+      <button class="close-modal-btn">Đóng</button>
+    </div>
+  </div>
+
+  <div class="congratulations" id="congratulations">Chúc mừng! Bạn đã đạt 10 lần dán!</div>
+
+  <script>
+    // ====== CONFIG ======
+    const API_URL = 'http://0.0.0.0:3000/push'; // đổi cho đúng (http ou https)
+    const SECRET_TOKEN = 'dangcongvu'; // phải giống server
+    const MAX_AGENTS = 18; // set 9 or 18 tùy bạn
+
+    // ====== state (giữ nguyên nhiều phần từ file gốc, thêm agent status) ======
+    let pasteCounts = [];
+    let copyCounts = [];
+    let timers = [];
+    let uniqueLinks = [];
+    let rowData = [];
+
+    // agent statuses (local cache, optional request to server)
+    const agentStatuses = {}; // agentId -> 'connected'|'disconnected'
+
+    // Helper: build agent select options
+    function buildAgentSelectHtml(selected){
+      let html = '<select class="agent-select">';
+      for(let i=1;i<=MAX_AGENTS;i++){
+        const sel = String(i) === String(selected) ? 'selected' : '';
+        html += `<option value="${i}" ${sel}>Agent ${i}</option>`;
+      }
+      html += '</select>';
+      return html;
+    }
+
+    // rest of your functions mostly unchanged (isValidUrl, formatTimestamp, modal, save/load)
+    function isValidUrl(string) {
+      const urlPattern = /^(https?:\/\/[^\s/$.?#].[^\s]*)$/i;
+      return urlPattern.test(string.trim());
+    }
+    function formatTimestamp(timestamp) {
+      const date = new Date(timestamp);
+      const hours = date.getHours().toString().padStart(2,'0');
+      const minutes = date.getMinutes().toString().padStart(2,'0');
+      return `${hours}:${minutes}`;
+    }
+
+    function updateTotalPaste() {
+      const total = pasteCounts.reduce((s,c) => s + (c||0), 0);
+      document.querySelector('.total-paste').textContent = `Tổng số lần dán: ${total}`;
+      const congratulations = document.getElementById('congratulations');
+      if (total === 10) {
+        congratulations.style.display = 'block';
+        setTimeout(()=> congratulations.style.display='none', 3000);
+      }
+    }
+    function updateTotalLinks() {
+      document.querySelector('.total-links').firstChild.textContent = `Tổng số link duy nhất: ${uniqueLinks.length} `;
+    }
+
+    // Render rows (modified to include agent select + send button + agent status)
+    function renderRows(){
+      const rowsContainer = document.getElementById('rows');
+      rowsContainer.innerHTML = '';
+      rowData.forEach((data, index) => {
+        const rowId = index + 1;
+        const agentDefault = rowData[index].agent || (rowId <= MAX_AGENTS ? String(rowId) : '1');
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.setAttribute('data-id', rowId);
+        row.innerHTML = `
+          <span class="timer"></span>
+          <span class="row-number">${rowId}</span>
+          <input type="text" class="text-input" placeholder="Nhập văn bản..." value="${(data.text||'').replace(/"/g,'&quot;')}">
+          <button class="button paste-btn" onclick="pasteText(${rowId})">Dán</button>
+          <button class="button copy-btn" onclick="copyText(${rowId})">Copy</button>
+          <button class="button delete-btn" onclick="deleteText(${rowId})">Delete</button>
+          <span class="paste-count">Dán: ${pasteCounts[rowId-1]||0} lần</span>
+          <span class="copy-count">Copy: ${copyCounts[rowId-1]||0} lần</span>
+          <button class="copy-adjust-btn" onclick="adjustCopyCount(${rowId}, 1)">+</button>
+          <button class="copy-adjust-btn" onclick="adjustCopyCount(${rowId}, -1)">−</button>
+          <textarea class="note-input" placeholder="Ghi chú...">${data.note||''}</textarea>
+
+          <!-- agent select + send button -->
+          ${buildAgentSelectHtml(agentDefault)}
+          <button class="button send-agent-btn" onclick="sendToAgent(${rowId})">Gửi</button>
+          <div class="agent-status" id="agent-status-${rowId}">${agentStatuses[agentDefault] || 'unknown'}</div>
+
+          <button class="button remove-row-btn" onclick="removeRow(${rowId})">Xóa</button>
+        `;
+        rowsContainer.appendChild(row);
+      });
+
+      // attach listeners for note inputs
+      document.querySelectorAll('.note-input').forEach(textarea => {
+        textarea.addEventListener('input', () => {
+          const row = textarea.closest('.row');
+          const rowId = parseInt(row.getAttribute('data-id'));
+          rowData[rowId-1].note = textarea.value;
+          saveData();
+        });
+      });
+
+      // attach change handler to agent-select so we save mapping
+      document.querySelectorAll('.agent-select').forEach((sel, idx) => {
+        sel.addEventListener('change', (ev) => {
+          rowData[idx].agent = ev.target.value;
+          // update agent status display
+          const st = agentStatuses[ev.target.value] || 'unknown';
+          document.getElementById('agent-status-' + (idx+1)).textContent = st;
+          saveData();
+        });
+      });
+
+      updateTotalPaste();
+    }
+
+    function addRow(){
+      rowData.push({ text:'', note:'', agent: String(rowData.length+1) });
+      pasteCounts.push(0); copyCounts.push(0); timers.push(null);
+      renderRows(); saveData();
+    }
+    function removeRow(rowId){
+      if(rowData.length <= 1){ alert('Phải có ít nhất 1 hàng!'); return; }
+      rowData.splice(rowId-1,1); pasteCounts.splice(rowId-1,1); copyCounts.splice(rowId-1,1); timers.splice(rowId-1,1);
+      renderRows(); saveData();
+    }
+
+    function saveData(){
+      const storageKey = 'textManagerData_sender_v1';
+      const data = { rowData, pasteCounts, copyCounts, timers, uniqueLinks, saveTimestamp: new Date().toISOString() };
+      localStorage.setItem(storageKey, JSON.stringify(data));
+    }
+
+    function loadData(){
+      const storageKey = 'textManagerData_sender_v1';
+      const saved = localStorage.getItem(storageKey);
+      if(!saved){
+        // default 9 rows
+        rowData = Array(9).fill().map((_,i)=>({ text:'', note:'', agent: String(i+1) }));
+        pasteCounts = Array(9).fill(0); copyCounts = Array(9).fill(0); timers = Array(9).fill(null);
+        renderRows(); return;
+      }
+      const obj = JSON.parse(saved);
+      rowData = obj.rowData || Array(9).fill().map((_,i)=>({ text:'', note:'', agent: String(i+1) }));
+      pasteCounts = obj.pasteCounts || Array(rowData.length).fill(0);
+      copyCounts = obj.copyCounts || Array(rowData.length).fill(0);
+      timers = obj.timers || Array(rowData.length).fill(null);
+      uniqueLinks = obj.uniqueLinks || [];
+      renderRows();
+      updateTotalLinks();
+      updateTotalPaste();
+    }
+
+    // pasteText, copyText, adjustCopyCount, deleteText (kept mostly same as original)
+    async function pasteText(rowId){
+      try {
+        const text = await navigator.clipboard.readText();
+        const row = document.querySelector(`.row[data-id="${rowId}"]`);
+        const input = row.querySelector('.text-input');
+        input.value = text;
+        rowData[rowId-1].text = text;
+        pasteCounts[rowId-1] = (pasteCounts[rowId-1]||0) + 1;
+
+        if (isValidUrl(text)) {
+          const t = text.trim();
+          if (!uniqueLinks.some(l => l.url === t)) uniqueLinks.push({ url: t, timestamp: new Date().toISOString() });
+          updateTotalLinks();
+        }
+
+        copyCounts[rowId-1] = (copyCounts[rowId-1]||0) + 1;
+        row.querySelector('.paste-count').textContent = `Dán: ${pasteCounts[rowId-1]} lần`;
+        saveData();
+        updateTotalPaste();
+      } catch (e) {
+        alert('Lỗi dán: ' + e.message);
+      }
+    }
+
+    function copyText(rowId){
+      const row = document.querySelector(`.row[data-id="${rowId}"]`);
+      const input = row.querySelector('.text-input');
+      navigator.clipboard.writeText(input.value).then(()=>{
+        copyCounts[rowId-1] = (copyCounts[rowId-1]||0) + 1;
+        saveData();
+      }).catch(e => alert('Lỗi copy: '+e.message));
+    }
+
+    function adjustCopyCount(rowId, change){
+      copyCounts[rowId-1] = Math.max(0, (copyCounts[rowId-1]||0) + change);
+      saveData();
+    }
+    function deleteText(rowId){
+      const row = document.querySelector(`.row[data-id="${rowId}"]`);
+      row.querySelector('.text-input').value = '';
+      row.querySelector('.note-input').value = '';
+      rowData[rowId-1] = { text:'', note:'', agent: rowData[rowId-1].agent || '1' };
+      pasteCounts[rowId-1] = 0; copyCounts[rowId-1]=0;
+      saveData(); updateTotalPaste();
+    }
+
+    // ========== NEW: send command to server for a specific agent ==========
+    async function sendToAgent(rowId){
+      const row = document.querySelector(`.row[data-id="${rowId}"]`);
+      const input = row.querySelector('.text-input');
+      const select = row.querySelector('.agent-select');
+      const agent = select ? select.value : '1';
+      const link = input.value.trim();
+      if(!link) return alert('Chưa có link để gửi');
+      if(!isValidUrl(link)) {
+        if(!confirm('Link có vẻ không đúng định dạng http/https. Vẫn gửi?')) return;
+      }
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: SECRET_TOKEN, targetAgent: agent, link })
+        });
+        const j = await res.json();
+        if (j.ok) {
+          alert(`Đã gửi tới Agent ${agent}`);
+        } else {
+          alert('Gửi thất bại: ' + (j.error || JSON.stringify(j)));
+        }
+      } catch(e){
+        alert('Lỗi gửi: ' + e.message);
+      }
+    }
+
+    // Modal functions (showLinksModal, deleteLink, deleteAllLinks, closeModal) - reuse from original...
+    function showLinksModal(){
+      const modal = document.querySelector('.links-modal'); const overlay = document.querySelector('.links-modal-overlay'); const linksList = document.querySelector('.links-list');
+      linksList.innerHTML = '';
+      if (uniqueLinks.length === 0) linksList.innerHTML = '<li>Chưa có link nào được lưu.</li>';
+      else {
+        uniqueLinks.forEach(linkObj => {
+          const li = document.createElement('li');
+          li.innerHTML = `<div class="link-item"><span class="link-url">${linkObj.url}</span><span class="link-timestamp">${formatTimestamp(linkObj.timestamp)}</span></div><button class="delete-link-btn" onclick="deleteLink('${linkObj.url.replace(/'/g,"\\'")}')">Xóa</button>`;
+          linksList.appendChild(li);
+        });
+      }
+      modal.style.display='block'; overlay.style.display='block';
+    }
+    function deleteLink(url){ uniqueLinks = uniqueLinks.filter(l=>l.url !== url); updateTotalLinks(); saveData(); showLinksModal(); }
+    function deleteAllLinks(){ uniqueLinks = []; updateTotalLinks(); saveData(); showLinksModal(); }
+    function closeLinksModal(){ document.querySelector('.links-modal').style.display='none'; document.querySelector('.links-modal-overlay').style.display='none'; }
+
+    document.querySelector('.show-links-btn').addEventListener('click', showLinksModal);
+    document.querySelector('.close-modal-btn').addEventListener('click', closeLinksModal);
+    document.querySelector('.delete-all-links-btn').addEventListener('click', deleteAllLinks);
+
+    // init
+    window.addEventListener('load', loadData);
+
+  </script>
+</body>
+</html>
