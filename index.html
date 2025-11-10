@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Quản lý Text — 2 cột (1-9 | 10-18)</title>
 <style>
-  /* Reset box-sizing + base */
   *,*::before,*::after{box-sizing:border-box}
   :root{
     --max-width:1360px;
@@ -18,18 +17,18 @@
   .container{width:100%; max-width:var(--max-width); padding:6px 18px 40px; background:transparent}
   h1{font-size:22px;margin:8px 0 6px}
   .board{display:grid;grid-template-columns:1fr 1fr; gap:var(--gap); align-items:start}
-  /* stack on small screens */
   @media (max-width:980px){ .board{grid-template-columns:1fr} }
 
   .col{background:transparent}
   .col h2{font-size:14px;margin:6px 0 10px;color:var(--muted)}
-  /* Row styling */
-  .row{display:grid;grid-template-columns:44px 1fr auto; gap:8px;align-items:center;padding:var(--row-padding);border:1px solid #e6e6e6;border-radius:8px;background:#fff}
-  /* inside right area we have controls stacked horizontally */
-  .controls{display:flex;gap:8px;align-items:center}
-  .row-number{width:36px;height:36px;border-radius:50%;background:#e9f6ff;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
-  .text-input{width:100%;padding:8px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px}
+
+  .row{display:grid;grid-template-columns:56px 1fr auto; gap:8px;align-items:center;padding:var(--row-padding);border:1px solid #e6e6e6;border-radius:8px;background:#fff}
+  .row-number{width:40px;height:40px;border-radius:50%;background:#e9f6ff;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;cursor:pointer;user-select:none}
+  .row-number.editing{background:#fff;border:1px solid #ddd; padding:0}
+  .text-input{width:100%;padding:8px 10px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;color:#111; overflow:hidden}
+  .text-input::selection{background:#b3d4ff}
   .note-input{width:140px;padding:8px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;resize:none;height:36px}
+  .controls{display:flex;gap:8px;align-items:center}
   .button{padding:7px 10px;border-radius:6px;border:none;color:#fff;cursor:pointer;font-size:13px}
   .paste-btn{background:#28a745}
   .send-btn{background:#17a2b8}
@@ -37,24 +36,13 @@
   .delete-btn{background:#dc3545}
   .agent-select{width:110px;padding:6px;border-radius:6px;border:1px solid #ddd;background:#fff;font-size:13px}
   .counts{display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:13px;color:var(--muted);margin-left:6px}
-  .paste-count,.copy-count{line-height:1}
-  /* compose right-most column inside each row */
   .row-right{display:flex;flex-direction:column;gap:6px;align-items:flex-end;min-width:190px}
-  .small-controls{display:flex;align-items:center;gap:8px}
   .small{font-size:12px;color:var(--muted)}
-  /* footer & buttons */
-  .footer{margin-top:14px;padding:12px;border-radius:8px;text-align:center;background:#fff;border:1px solid #e6e6e6}
   .add-row-btn{background:#28a745;color:#fff;padding:8px 14px;border-radius:6px;border:none;cursor:pointer}
-  /* links modal */
   #links-modal{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;padding:14px;border:1px solid #ddd;border-radius:8px;z-index:9999;max-width:900px;width:94%;max-height:72vh;overflow:auto}
-  /* toast */
   .toast{position:fixed;right:18px;bottom:18px;background:#28a745;color:#fff;padding:10px 14px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.18);z-index:2147483647;opacity:1;transition:opacity .3s,transform .25s}
   .toast.error{background:#dc3545}
-  /* compact adjustments so rows line up nicely */
   .row .controls button{padding:6px 8px;border-radius:6px;font-size:13px}
-  .row .controls .copy-btn{padding:6px 10px}
-  .row .controls .send-btn{padding:6px 10px}
-  /* on very wide screens make rows slightly taller for visual balance */
   @media (min-width:1200px){ .row{padding:12px} .text-input{font-size:14px} .note-input{height:40px} }
 </style>
 </head>
@@ -109,7 +97,6 @@ let pasteCounts = [];
 let copyCounts = [];
 let uniqueLinks = [];
 
-/* storage key */
 function storageKey(){ return 'textManager_2col_v1' }
 function isValidUrl(s){ return /^(https?:\/\/[^\s/$.?#].[^\s]*)$/i.test(String(s||'').trim()) }
 
@@ -120,7 +107,7 @@ function saveState(){
 function loadState(){
   const raw = localStorage.getItem(storageKey());
   if(!raw){
-    rowData = Array(MAX_ROWS).fill(0).map(()=>({ text:'', note:'', agent:'' }));
+    rowData = Array(MAX_ROWS).fill(0).map(()=>({ text:'', note:'', agent:'', stt: null }));
     pasteCounts = Array(MAX_ROWS).fill(0);
     copyCounts = Array(MAX_ROWS).fill(0);
     uniqueLinks = [];
@@ -128,12 +115,12 @@ function loadState(){
   }
   try{
     const obj = JSON.parse(raw);
-    rowData = obj.rowData && obj.rowData.length===MAX_ROWS ? obj.rowData : (Array(MAX_ROWS).fill(0).map(()=>({ text:'', note:'', agent:'' })));
+    rowData = obj.rowData && obj.rowData.length===MAX_ROWS ? obj.rowData.map(r => ({ text:r.text||'', note:r.note||'', agent:r.agent||'', stt: r.stt || null })) : (Array(MAX_ROWS).fill(0).map(()=>({ text:'', note:'', agent:'', stt: null })));
     pasteCounts = obj.pasteCounts && obj.pasteCounts.length===MAX_ROWS ? obj.pasteCounts : Array(MAX_ROWS).fill(0);
     copyCounts = obj.copyCounts && obj.copyCounts.length===MAX_ROWS ? obj.copyCounts : Array(MAX_ROWS).fill(0);
     uniqueLinks = obj.uniqueLinks || [];
   }catch(e){
-    rowData = Array(MAX_ROWS).fill(0).map(()=>({ text:'', note:'', agent:'' }));
+    rowData = Array(MAX_ROWS).fill(0).map(()=>({ text:'', note:'', agent:'', stt: null }));
     pasteCounts = Array(MAX_ROWS).fill(0);
     copyCounts = Array(MAX_ROWS).fill(0);
     uniqueLinks = [];
@@ -150,13 +137,14 @@ function buildAgentSelect(selected){
 
 function makeRowHtml(index){
   const id = index+1;
-  const data = rowData[index] || { text:'', note:'', agent:'' };
+  const data = rowData[index] || { text:'', note:'', agent:'', stt: null };
+  const displayStt = (data.stt !== null && data.stt !== undefined && String(data.stt).trim() !== '') ? data.stt : id;
   const textEsc = (data.text||'').replace(/"/g,'&quot;');
   const agentHtml = buildAgentSelect(data.agent || '');
   return `
     <div class="row" data-id="${id}">
-      <div class="row-number">${id}</div>
-      <input class="text-input" value="${textEsc}" placeholder="Nhập văn bản..." />
+      <div class="row-number" title="Double-click để sửa STT">${displayStt}</div>
+      <input class="text-input" value="${textEsc}" placeholder="Nhập link hoặc văn bản..." />
       <div style="display:flex;align-items:center;gap:8px;width:100%;justify-content:flex-end">
         <div class="controls">
           <button class="button paste-btn" onclick="pasteText(${id})">Dán</button>
@@ -191,17 +179,24 @@ function renderAll(){
     right.appendChild(wrap.firstElementChild);
   }
 
+  // attach events
   document.querySelectorAll('.row').forEach(rowEl => {
     const id = parseInt(rowEl.getAttribute('data-id'));
     const idx = id-1;
     const input = rowEl.querySelector('.text-input');
     input.addEventListener('input', e => { rowData[idx].text = e.target.value; saveState(); });
 
+    input.title = rowData[idx].text || '';
+
     const select = rowEl.querySelector('.agent-select');
     select.addEventListener('change', e => { rowData[idx].agent = e.target.value; saveState(); });
 
     const note = rowEl.querySelector('.note-input');
     note.addEventListener('input', e => { rowData[idx].note = e.target.value; saveState(); });
+
+    // double-click on STT to edit displayed number (no reorder)
+    const rn = rowEl.querySelector('.row-number');
+    rn.addEventListener('dblclick', ()=> startEditSTTinline(rowEl));
   });
 }
 
@@ -211,7 +206,7 @@ function updateTotals(){
   document.getElementById('total-links').textContent = (uniqueLinks||[]).length;
 }
 
-/* actions */
+/* ========== actions ========== */
 async function pasteText(rowId){
   const idx = rowId-1;
   try{
@@ -244,6 +239,7 @@ function deleteText(rowId){
   rowData[idx].text = '';
   rowData[idx].note = '';
   rowData[idx].agent = '';
+  rowData[idx].stt = null;
   pasteCounts[idx] = 0;
   copyCounts[idx] = 0;
   saveState();
@@ -277,7 +273,47 @@ async function sendToAgent(rowId){
   }
 }
 
-/* links modal */
+/* ========== Inline STT edit (no reorder) ========== */
+function startEditSTTinline(rowEl){
+  const rn = rowEl.querySelector('.row-number');
+  const id = parseInt(rowEl.getAttribute('data-id'));
+  const idx = id-1;
+  // create numeric input
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.value = (rowData[idx] && rowData[idx].stt !== null && rowData[idx].stt !== undefined && String(rowData[idx].stt).trim() !== '') ? String(rowData[idx].stt) : String(id);
+  inp.style.width = '46px';
+  inp.style.height = '34px';
+  inp.style.fontWeight = '700';
+  inp.style.borderRadius = '6px';
+  inp.style.textAlign = 'center';
+  inp.className = 'stt-edit-input';
+  rn.replaceWith(inp);
+  inp.focus();
+  inp.select();
+
+  function finish(){
+    const raw = inp.value.trim();
+    // if empty -> clear custom stt (revert to default id)
+    if(raw === ''){
+      rowData[idx].stt = null;
+    } else {
+      // accept any string (user wanted visible text) but sanitize length
+      const val = raw.slice(0, 6); // limit length to avoid layout break
+      rowData[idx].stt = val;
+    }
+    saveState();
+    renderAll();
+  }
+
+  inp.addEventListener('blur', finish);
+  inp.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ inp.blur(); }
+    if(e.key === 'Escape'){ renderAll(); }
+  });
+}
+
+/* ========== links modal ========== */
 function showLinksModal(){
   const list = document.getElementById('links-list');
   list.innerHTML = '';
