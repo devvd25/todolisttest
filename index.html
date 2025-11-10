@@ -64,7 +64,18 @@
   .toast.error{background:#dc3545}
   .row .controls button{padding:6px 8px;border-radius:6px;font-size:13px}
   .paste-count,.copy-count{font-size:13px;color:var(--muted)}
- /* FORCE: make input column much wider and expand container */
+
+/* --- highlight khi copy >= 5 --- */
+.highlight-copy {
+  background-color: #fff3b0; /* vàng nhạt */
+  color: #111;
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-weight: 700;
+  display: inline-block;
+}
+
+/* FORCE: make input column much wider and expand container */
 :root{ --max-width:1600px; } /* mở rộng vùng chứa */
 .container{ max-width:var(--max-width) !important; padding-left:12px !important; padding-right:12px !important; }
 
@@ -296,6 +307,14 @@ function renderAll(){
 
     // update timer element text & class reference
     updateTimerDisplay(id);
+
+    // --- NEW: highlight copy-count when >=5
+    const copyEl = rowEl.querySelector('.copy-count');
+    if(copyCounts[idx] >= 5){
+      copyEl.classList.add('highlight-copy');
+    } else {
+      copyEl.classList.remove('highlight-copy');
+    }
   });
 }
 
