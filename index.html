@@ -102,6 +102,73 @@
   border-radius: 4px;
   font-weight: 600;
 }
+/* ========== FORCE FIX: tránh input tràn và giữ layout đều ========== */
+
+/* đảm bảo grid chính đúng cấu trúc (điều chỉnh nếu bạn muốn) */
+.row {
+  display: grid !important;
+  grid-template-columns: 56px 40px 1fr 360px !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+
+/* CHÌA KHÓA: cho phép input SHRINK trong grid */
+.row input.text-input,
+.row .text-input {
+  min-width: 0 !important;               /* cho phép co lại */
+  width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* phần phải (controls) KHÔNG bị input đẩy sang phải */
+.row .row-right,
+.row > .row-right,
+.row > div.row-right {
+  min-width: 260px !important;
+  max-width: 420px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+/* badge copy gọn lại, không làm vỡ layout */
+.copy-count, .copy-warning {
+  display:inline-block !important;
+  min-width: 60px !important;
+  max-width: 110px !important;
+  padding:6px 8px !important;
+  box-sizing:border-box !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+
+/* ghi chú không ép controls (nhường chỗ cho input) */
+.note-input {
+  width: 140px !important;
+  min-width: 120px !important;
+  flex-shrink: 0 !important;
+}
+
+/* responsive: nếu màn hình hẹp, giảm width phần controls để input còn chỗ */
+@media (max-width: 1200px) {
+  .row { grid-template-columns:56px 40px 1fr 300px !important; }
+  .row .row-right { min-width:220px !important; max-width:320px !important; }
+}
+@media (max-width: 980px) {
+  .row { grid-template-columns:56px 40px 1fr 1fr !important; }
+  .note-input { width: 110px !important; min-width: 90px !important; }
+  .row .row-right { min-width: 140px !important; max-width: 200px !important; }
+}
+
+/* helper: highlight khi debug */
+.row.debug-border { outline: 1px dashed rgba(0,0,0,0.08) !important; }
 
 </style>
 </head>
