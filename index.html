@@ -142,11 +142,12 @@ async function sendToAgent(rowId){
       body: JSON.stringify({ token: SECRET_TOKEN, targetAgent: agent, link })
     });
     const j = await res.json();
-    if(j.ok) {
-      alert(`Đã gửi tới Agent ${agent}`);
-    } else {
-      alert('Gửi thất bại: ' + (j.error || JSON.stringify(j)));
-    }
+    if (j.ok) {
+    showToast(`Đã gửi tới Agent ${agent}`);
+} else {
+    showToast(`Gửi thất bại: ${j.error || JSON.stringify(j)}`, true);
+}
+
   }catch(e){
     alert('Gửi thất bại: ' + e.message);
   }
