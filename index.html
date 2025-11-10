@@ -6,22 +6,23 @@
     <title>Quản lý Text</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 1000px; margin: 20px auto; padding: 0 10px; }
-        .row { display:flex; align-items:center; margin-bottom:10px; padding:10px; border:1px solid #ccc; border-radius:5px; }
+        .row { display:flex; align-items:center; gap:8px; margin-bottom:10px; padding:10px; border:1px solid #ccc; border-radius:5px; }
         .timer { width:80px; text-align:center; margin-right:10px; font-size:14px; color:#333; }
         .timer.ready { color:#28a745; font-weight:bold; }
         .row-number { width:30px; font-weight:bold; text-align:center; margin-right:10px; font-size:18px; background:#e0f7fa; border-radius:50%; padding:5px; color:#007bff; }
-        .text-input { flex:1; padding:8px; margin-right:10px; border:1px solid #ddd; border-radius:4px; }
+        .text-input { flex:1; padding:8px; margin-right:6px; border:1px solid #ddd; border-radius:4px; }
         .note-input { width:150px; height:40px; padding:8px; margin-left:10px; border:1px solid #ddd; border-radius:4px; resize:none; }
         .button { padding:8px 12px; margin-right:5px; border:none; border-radius:4px; cursor:pointer; color:white; }
         .paste-btn { background:#28a745; }
+        .send-btn { background:#17a2b8; } /* nút Gửi */
         .copy-btn { background:#007bff; }
         .delete-btn { background:#dc3545; }
-        .send-btn { background:#17a2b8; } /* nút Gửi mới */
         .remove-row-btn { background:#ff6b6b; padding:8px 12px; }
         .paste-count, .copy-count { margin-left:10px; font-weight:bold; color:#555; padding:5px; border-radius:3px; transition:background-color 0.3s; }
         .copy-count.highlight { background:#ffc107 !important; }
         .copy-adjust-btn { padding:2px 8px; margin-left:5px; font-size:12px; background:#6c757d; color:white; border:none; border-radius:3px; cursor:pointer; }
-        .total-paste, .total-links { margin-top:20px; padding:10px; border:1px solid #ccc; border-radius:5px; font-weight:bold; text-align:center; display:flex; align-items:center; justify-content:center; }
+        .agent-select { width:110px; padding:6px; border-radius:4px; border:1px solid #ccc; background:white; }
+        .total-paste, .total-links { margin-top:20px; padding:10px; border:1px solid #ccc; border-radius:5px; font-weight:bold; text-align:center; display:flex; align-items:center; justify-content:center; gap:10px; }
         .show-links-btn { margin-left:10px; padding:5px 10px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer; }
         .add-row-btn { margin-top:10px; padding:10px 20px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer; display:block; margin-left:auto; margin-right:auto; }
         .links-modal { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; border:1px solid #ccc; border-radius:5px; padding:20px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 0 10px rgba(0,0,0,0.3); z-index:1000; }
@@ -37,6 +38,11 @@
         /* toast */
         .toast { position:fixed; right:20px; bottom:20px; background:#28a745; color:#fff; padding:10px 14px; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,0.18); z-index:2147483647; font-size:14px; opacity:1; transition:opacity .4s, transform .25s; }
         .toast.error { background:#dc3545; }
+        /* responsive */
+        @media (max-width:800px){
+            .row { flex-direction:column; align-items:flex-start; gap:6px; }
+            .agent-select { width:100%; }
+        }
     </style>
 </head>
 <body>
@@ -63,6 +69,7 @@
     // ====== CẤU HÌNH ======
     const API_URL = 'https://844aace9e015.ngrok-free.app/push'; // <-- đổi theo server/ngrok của bạn
     const SECRET_TOKEN = 'MY_SECRET_TOKEN_ChangeMe'; // <-- đổi giống server.js
+    const MAX_AGENTS = 18; // số agent hiển thị trong dropdown
 
     // ====== state ======
     let pasteCounts = [];
@@ -71,7 +78,7 @@
     let uniqueLinks = [];
     let rowData = [];
 
-    // helper storage key (giữ tương thích)
+    // helper storage key
     function getStorageKey() {
         const path = window.location.pathname;
         if (path.includes('todolist2')) return 'textManagerData_todolist2';
@@ -138,11 +145,25 @@
         timers[rowId-1].intervalId = setInterval(()=>{ timers[rowId-1].timeLeft--; updateTimerDisplay(rowId); saveData(); if(timers[rowId-1].timeLeft<=0) clearInterval(timers[rowId-1].intervalId); },1000);
     }
 
+    // build agent select HTML (1..MAX_AGENTS)
+    function buildAgentSelectHtml(selected){
+        let html = `<select class="agent-select">`;
+        for(let i=1;i<=MAX_AGENTS;i++){
+            html += `<option value="${i}" ${String(i)===String(selected) ? 'selected' : ''}>Agent ${i}</option>`;
+        }
+        html += `</select>`;
+        return html;
+    }
+
     function renderRows(){
         const rowsContainer=document.getElementById('rows'); rowsContainer.innerHTML='';
         rowData.forEach((data,i)=>{
             const id=i+1;
             const row=document.createElement('div'); row.className='row'; row.setAttribute('data-id', id);
+
+            // default agent for this row stored in rowData[i].agent (fallback '')
+            const agentHtml = buildAgentSelectHtml(data.agent || '');
+
             row.innerHTML = `
                 <span class="timer"></span>
                 <span class="row-number">${id}</span>
@@ -155,6 +176,7 @@
                 <span class="copy-count">Copy: ${copyCounts[id-1]||0} lần</span>
                 <button class="copy-adjust-btn" onclick="adjustCopyCount(${id}, 1)">+</button>
                 <button class="copy-adjust-btn" onclick="adjustCopyCount(${id}, -1)">−</button>
+                ${agentHtml}
                 <textarea class="note-input" placeholder="Ghi chú...">${data.note||''}</textarea>
                 <button class="button remove-row-btn" onclick="removeRow(${id})">Xóa</button>
             `;
@@ -167,19 +189,29 @@
             const noteEl = row.querySelector('.note-input');
             noteEl.addEventListener('input', (e)=>{ rowData[id-1].note = e.target.value; saveData(); });
 
+            // attach listener to agent-select: save selection to rowData
+            const selectEl = row.querySelector('.agent-select');
+            if(selectEl){
+                selectEl.addEventListener('change', (ev) => {
+                    rowData[id-1].agent = ev.target.value;
+                    saveData();
+                });
+            }
+
             updateCopyDisplay(id);
             updateTimerDisplay(id);
         });
     }
 
-    function addRow(){ rowData.push({ text:'', note:'' }); pasteCounts.push(0); copyCounts.push(0); timers.push(null); renderRows(); saveData(); }
+    function addRow(){ rowData.push({ text:'', note:'', agent: '' }); pasteCounts.push(0); copyCounts.push(0); timers.push(null); renderRows(); saveData(); }
     function removeRow(rowId){ if(rowData.length<=1){ alert('Phải có ít nhất 1 hàng!'); return; } rowData.splice(rowId-1,1); pasteCounts.splice(rowId-1,1); copyCounts.splice(rowId-1,1); timers.splice(rowId-1,1); renderRows(); saveData(); }
 
     function saveData(){
         const textInputs = rowData.map(d=>d.text);
         const noteInputs = rowData.map(d=>d.note);
+        const agents = rowData.map(d=>d.agent || '');
         const savedTimers = timers.map(t => t ? { timeLeft: t.timeLeft, waitingForFocus: t.waitingForFocus } : null);
-        const data = { textInputs, noteInputs, pasteCounts, copyCounts, timers: savedTimers, uniqueLinks, saveTimestamp: new Date().toISOString() };
+        const data = { textInputs, noteInputs, agents, pasteCounts, copyCounts, timers: savedTimers, uniqueLinks, saveTimestamp: new Date().toISOString() };
         localStorage.setItem(getStorageKey(), JSON.stringify(data));
     }
 
@@ -197,13 +229,13 @@
         clearDataIfNewDay();
         const saved = localStorage.getItem(getStorageKey());
         if(!saved){
-            rowData = Array(9).fill().map(()=>({ text:'', note:'' }));
+            rowData = Array(9).fill().map(()=>({ text:'', note:'', agent: '' }));
             pasteCounts = Array(9).fill(0); copyCounts = Array(9).fill(0); timers = Array(9).fill(null);
             renderRows(); return;
         }
         const parsed = JSON.parse(saved);
-        const { textInputs = [], noteInputs = [], pasteCounts: pc = [], copyCounts: cc = [], timers: tms = [], uniqueLinks: ul = [] } = parsed;
-        rowData = (textInputs.length? textInputs.map((text,i)=>({ text: text||'', note: noteInputs[i]||'' })) : Array(9).fill().map(()=>({ text:'', note:'' })));
+        const { textInputs = [], noteInputs = [], agents = [], pasteCounts: pc = [], copyCounts: cc = [], timers: tms = [], uniqueLinks: ul = [] } = parsed;
+        rowData = (textInputs.length? textInputs.map((text,i)=>({ text: text||'', note: noteInputs[i]||'', agent: agents[i]||'' })) : Array(9).fill().map(()=>({ text:'', note:'', agent:'' })));
         pasteCounts = pc.length? pc : Array(rowData.length).fill(0);
         copyCounts = cc.length? cc : Array(rowData.length).fill(0);
         timers = tms.length? tms : Array(rowData.length).fill(null);
@@ -263,29 +295,32 @@
     function deleteText(rowId){
         const row = document.querySelector(`.row[data-id="${rowId}"]`);
         row.querySelector('.text-input').value=''; row.querySelector('.note-input').value='';
-        rowData[rowId-1] = { text:'', note:'' };
+        rowData[rowId-1] = { text:'', note:'', agent: '' };
         pasteCounts[rowId-1]=0; copyCounts[rowId-1]=0;
         row.querySelector('.paste-count').textContent = `Dán: 0 lần`;
         resetTimer(rowId); updateCopyDisplay(rowId); saveData(); updateTotalPaste();
     }
 
-    // ======= NEW: gửi tới agent =======
+    // ======= NEW: gửi tới agent (używa select jeśli được chọn, else fallback to localStorage) =======
     async function sendToAgent(rowId){
         const idx = rowId-1;
         const link = (rowData[idx] && rowData[idx].text) ? rowData[idx].text.trim() : '';
         if(!link) { showToast('Chưa có link để gửi', true); return; }
         if(!isValidUrl(link) && !confirm('Link có vẻ không chuẩn http(s). Vẫn gửi?')) return;
 
-        // agent id lấy từ localStorage (nreer_agent_id) — same as agent userscript
-        const agentId = localStorage.getItem('nreer_agent_id') || null;
+        // ưu tiên agent được chọn trong hàng
+        const chosenAgent = rowData[idx].agent && rowData[idx].agent.trim() ? rowData[idx].agent.trim() : null;
+        // fallback localStorage agent id (userscript)
+        const fallbackAgent = localStorage.getItem('nreer_agent_id') || null;
+        const agentToSend = chosenAgent || fallbackAgent || '1';
 
-        const payload = { token: SECRET_TOKEN, targetAgent: agentId || '1', link };
+        const payload = { token: SECRET_TOKEN, targetAgent: agentToSend, link };
 
         try {
             const res = await fetch(API_URL, { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
             const j = await res.json().catch(()=>({ ok:false, error:'invalid_json' }));
             if(res.ok && j.ok) {
-                showToast(`Đã gửi tới Agent ${agentId || '1'}`);
+                showToast(`Đã gửi tới Agent ${agentToSend}`);
             } else {
                 const err = j.error || j || 'unknown';
                 showToast(`Gửi thất bại: ${err}`, true);
