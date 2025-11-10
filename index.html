@@ -65,7 +65,21 @@
 .text-input::selection { background: #b3d4ff; color: inherit; }
 
 
-  .note-input{width:140px;padding:8px;border:1px solid #e0e0e0;border-radius:6px;font-size:13px;resize:none;height:36px}
+  /* Giữ ô Ghi chú luôn hiện dạng hộp, không bị nén khi zoom */
+.note-input {
+  box-sizing: border-box;
+  flex: 0 0 auto !important;     /* không cho co lại */
+  min-width: 140px !important;    /* thay số này nếu muốn rộng hơn */
+  max-width: 260px !important;    /* tránh quá rộng phá layout */
+  width: 140px !important;        /* giữ kích thước cố định mặc định */
+  min-height: 36px !important;    /* đảm bảo thấy hộp, không còn chỉ thanh cuộn */
+  padding: 8px !important;
+  border-radius: 8px !important;
+  overflow: visible !important;
+  background: #fff !important;
+  font-size: 14px !important;
+  line-height: 1.3 !important;
+}
   .controls{display:flex;gap:8px;align-items:center}
   .button{padding:7px 10px;border-radius:6px;border:none;color:#fff;cursor:pointer;font-size:13px}
   .paste-btn{background:#28a745}
