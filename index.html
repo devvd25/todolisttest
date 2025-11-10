@@ -102,6 +102,10 @@
   border-radius: 4px;
   font-weight: 600;
 }
+ .row.copy-warning {
+  background: #fff176 !important;
+  transition: background 0.3s ease;
+}
 
 </style>
 </head>
@@ -258,7 +262,7 @@ function makeRowHtml(index){
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-start;margin-left:6px">
           <div class="paste-count">Dán: ${pasteCounts[id-1]||0} lần</div>
-          <div class="copy-count ${copyCounts[id-1] >= 5 ? 'copy-warning' : ''}">
+          <div class="row ${copyCounts[id-1] >= 5 ? 'copy-warning' : ''}" data-id="${id}">
     Copy: ${copyCounts[id-1] || 0} lần
 </div>
         </div>
