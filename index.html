@@ -43,7 +43,31 @@
   .toast{position:fixed;right:18px;bottom:18px;background:#28a745;color:#fff;padding:10px 14px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.18);z-index:2147483647;opacity:1;transition:opacity .3s,transform .25s}
   .toast.error{background:#dc3545}
   .row .controls button{padding:6px 8px;border-radius:6px;font-size:13px}
-  @media (min-width:1200px){ .row{padding:12px} .text-input{font-size:14px} .note-input{height:40px} }
+  /* --- Paste vào cuối <style> để override nhanh --- */
+
+.row {
+  /* dành nhiều chỗ hơn cho input: số giữa tăng từ 1fr -> 1.8fr,
+     phần phải (controls) sẽ chiếm ~1fr tương đương 320-360px */
+  grid-template-columns: 56px 1.8fr 360px !important;
+}
+
+/* đảm bảo input có thể hiển thị đường dài và scroll ngang nếu cần */
+.text-input {
+  min-width: 220px !important;
+  max-width: none !important;
+  overflow-x: auto;
+  white-space: nowrap;    /* hiển thị nối tiếp chứ không wrap xuống hàng */
+}
+
+/* giảm width ô note để nhường chỗ cho input (nếu note còn quá rộng) */
+.note-input {
+  width: 140px !important;
+}
+
+/* nếu muốn input nhìn rõ hơn, tăng font-size */
+.text-input { font-size: 14px !important; color: #111; }
+
+@media (min-width:1200px){ .row{padding:12px} .text-input{font-size:14px} .note-input{height:40px} }
 </style>
 </head>
 <body>
