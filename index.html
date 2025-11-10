@@ -155,6 +155,33 @@ async function sendToAgent(rowId){
 
 /* init */
 window.addEventListener('load', ()=>{ loadData(); });
+  function showToast(msg, isError = false) {
+  let toast = document.createElement("div");
+  toast.textContent = msg;
+
+  Object.assign(toast.style, {
+    position: "fixed",
+    right: "20px",
+    bottom: "20px",
+    background: isError ? "#dc3545" : "#28a745",
+    color: "#fff",
+    padding: "10px 16px",
+    borderRadius: "6px",
+    boxShadow: "0px 3px 10px rgba(0,0,0,0.25)",
+    fontSize: "14px",
+    zIndex: 99999,
+    opacity: 1,
+    transition: "opacity 0.5s ease"
+  });
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    setTimeout(() => toast.remove(), 500);
+  }, 1200);
+}
+
 </script>
 </body>
 </html>
