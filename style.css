@@ -114,3 +114,40 @@ h1{font-size:22px;margin:8px 0 6px}
   .note-input{ width:110px; min-width:90px; }
   .row { grid-template-columns:56px 40px 1fr 1fr; }
 }
+/* Fix: reserve right space for controls and keep controls above input */
+.row {
+  /* ưu tiên input lớn hơn, controls có vùng tối đa */
+  grid-template-columns: 56px 40px 2.2fr minmax(160px,360px) !important;
+}
+
+/* Reserve space visually inside the input so text won't be hidden by the right controls */
+.row .text-input {
+  padding-right: 260px !important; /* ← quan trọng: đặt đủ chỗ cho nhóm nút + badge + agent + note */
+  box-sizing: border-box !important;
+}
+
+/* Controls must sit on top and keep fixed-ish width */
+.row > .row-right,
+.row > :nth-child(4) {
+  position: relative !important;
+  z-index: 3 !important;
+  min-width: 160px !important;
+  max-width: 360px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Make sure buttons don't expand too much and stay compact */
+.row .controls .button { white-space: nowrap; padding:6px 8px; font-size:13px; }
+
+/* If the reserved padding is too big/small, adjust this number (260px) up/down */
+@media (max-width:1200px) {
+  .row .text-input { padding-right: 200px !important; }
+  .row { grid-template-columns:56px 40px 1.8fr minmax(120px,320px) !important; }
+}
+@media (max-width:980px) {
+  .row .text-input { padding-right: 120px !important; }
+  .row { grid-template-columns:56px 40px 1fr 1fr !important; }
+}
